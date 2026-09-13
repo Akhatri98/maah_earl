@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 
 from ..contracts.graph import (
     ChangeEvent,
+    ChangeKind,
     DependencyGraph,
     Edge,
     EdgeKind,
@@ -34,7 +35,7 @@ from ..contracts.graph import (
     Node,
     OnshapeRef,
 )
-from .benchmark import BenchmarkSpec, benchmark_spec
+from .benchmark import BenchmarkSpec, benchmark_spec, variable_drives
 from .parsers import (
     Instance,
     Mate,
@@ -110,6 +111,52 @@ def translate_edges(edges: list[Edge], id_map: IdMap) -> tuple[list[Edge], list[
             seen.add(key)
             out.append(Edge(source, target, edge.kind))
     return out, problems
+
+
+def variable_ref_edges(
+    change: ChangeEvent,
+    member_ids: list[str],
+    node_ids: list[str],
+) -> tuple[list[Edge], list[str]]:
+    """VARIABLE_REF edges from a changed variable to what it drives.
+
+    A variable is not a member or a node, so it is not part of the structure
+    -- but `DependencyGraph.validate()` admits `change.target_id` as an edge
+    endpoint precisely so a change can hang off something that is not an
+    entity. That makes the changed variable a legal seed for the walk.
+
+    Only the variable that ACTUALLY changed gets edges. Emitting them for
+    every variable in the table would reference ids the contract does not
+    know, and validation would reject the graph.
+    """
+    if change.kind is not ChangeKind.VARIABLE_EDIT:
+        return [], []
+
+    # A variable edit whose target is already a member or node needs no
+    # bridging edges -- the walk seeds straight from the entity. This happens
+    # when the caller has already resolved the variable to what it drives.
+    if change.target_id in set(member_ids) | set(node_ids):
+        return [], []
+
+    drives = variable_drives(change.target_id)
+    if not drives:
+        return [], [
+            f"variable {change.target_id!r} changed, but nothing declares what "
+            "it drives (see VARIABLE_DRIVES in benchmark.py) and it is not a "
+            "member or node either; the walk would start from it and reach "
+            "nothing"
+        ]
+
+    edges: list[Edge] = []
+    if "members" in drives:
+        edges += [
+            Edge(change.target_id, m, EdgeKind.VARIABLE_REF) for m in member_ids
+        ]
+    if "nodes" in drives:
+        edges += [
+            Edge(change.target_id, n, EdgeKind.VARIABLE_REF) for n in node_ids
+        ]
+    return edges, []
 
 
 def topology_edges(topology: TrussTopology) -> list[Edge]:
@@ -202,6 +249,14 @@ def build_graph(
         e for e in topology_edges(topology)
         if (e.source_id, e.target_id) not in mate_pairs
     ]
+
+    var_edges, var_problems = variable_ref_edges(
+        change,
+        sorted(topology.member_ends, key=_member_sort_key),
+        sorted(topology.node_positions),
+    )
+    edges += var_edges
+    problems.extend(var_problems)
 
     nodes = [
         Node(

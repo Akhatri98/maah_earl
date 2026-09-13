@@ -15,9 +15,10 @@ treats requests as a scarce resource:
 
 from __future__ import annotations
 
+import copy
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
@@ -73,7 +74,7 @@ class OnshapeClient:
         method: str,
         path: str,
         params: dict[str, Any] | None = None,
-        body: dict[str, Any] | None = None,
+        body: Any = None,
     ) -> Any:
         url = f"{self.config.base_url}{path}"
         resp = requests.request(
@@ -111,10 +112,23 @@ class OnshapeClient:
             self._record(path, data)
         return data
 
+    def for_workspace(self, workspace_id: str) -> OnshapeClient:
+        """A sibling client aimed at a different workspace (normally a branch).
+
+        Copies rather than constructs, so a subclass -- a test fake, say --
+        stays its own type and keeps its state. The log starts empty so the
+        branch's calls can be counted separately and then folded back into the
+        parent's total.
+        """
+        sibling = copy.copy(self)
+        sibling.config = replace(self.config, workspace_id=workspace_id)
+        sibling.log = []
+        return sibling
+
     def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         return self._request("GET", path, params=params)
 
-    def _post(self, path: str, body: dict[str, Any] | None = None) -> Any:
+    def _post(self, path: str, body: Any = None) -> Any:
         """A write. Onshape writes are NOT free to undo -- a version, once
         created, cannot be deleted -- so callers should make the intent
         explicit rather than treating this like a read."""
@@ -160,6 +174,34 @@ class OnshapeClient:
         usually a variable-table value changing.
         """
         return self._get(f"/api/variables/{self._dw()}/e/{element_id}/variables")
+
+    # NOTE: there is deliberately no `set_variables()` posting to
+    # /api/variables/.../variables. It 404s against this document, verified
+    # live: the variables here are `assignVariable` FEATURES in the part
+    # studio, not rows of a Variable Studio table, so there is no variable
+    # table to write to. Edits go through `update_partstudio_feature` below.
+
+    def update_partstudio_feature(
+        self, element_id: str, feature_id: str, feature: dict[str, Any]
+    ) -> Any:
+        """Replace one part studio feature. This is the 'evaluate' in the
+        branch cycle -- editing an `assignVariable` feature is how a variable
+        actually changes.
+
+        A WRITE, and it edits whatever workspace this client points at -- so
+        point it at a branch, never at Main. `BranchSession` in `branch.py`
+        exists so that is the default rather than something to remember.
+
+        `feature` must be the COMPLETE BTMFeature wrapper as Onshape sent it,
+        with only the intended field changed: the feature is replaced by what
+        it is given, so a partial payload silently drops every parameter left
+        out. `parsers.feature_with_expression()` builds that payload.
+        """
+        return self._post(
+            f"/api/partstudios/{self._dw()}/e/{element_id}"
+            f"/features/featureid/{feature_id}",
+            {"feature": feature},
+        )
 
     def get_assembly_definition(
         self,

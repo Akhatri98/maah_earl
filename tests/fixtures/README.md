@@ -15,7 +15,7 @@ parts `m1`…`m10`, 9 Fastened mates, 20 mate connectors, and the 3 variables
 |---|---|
 | `assemblies_d_w_e.json` | Assembly definition — instances, mates, **and all 20 mate connectors** |
 | `assemblies_d_w_e_features.json` | Assembly `/features` — the BTM authoring form of the same mates |
-| `partstudios_d_w_e_features.json` | Part studio features — the `tenBarTruss` custom feature |
+| `partstudios_d_w_e_features.json` | Part studio features — the `tenBarTruss` custom feature **and the three `assignVariable` features** |
 | `parts_d_w_e.json` | Parts list, for provenance ids |
 | `variables_d_w_e_variables.json` | Variable table |
 
@@ -37,6 +37,20 @@ Re-record only from a document that still has the truss modelled:
 ```
 .venv/Scripts/python.exe scripts/onshape_discover.py    # costs 5 API calls
 ```
+
+### `partstudios_d_w_e_features.json` is the writable view of the variables
+
+It was re-recorded once the variables existed: the earlier copy held only the
+`tenBarTruss` feature, which made it look as though the part studio had no
+variables at all.
+
+The three variables are `assignVariable` **features**, not rows of a Variable
+Studio table — this document has no Variable Studio. That is why
+`POST /variables/.../variables` answers **404** (verified live) and edits go
+through `POST /partstudios/.../features/featureid/{fid}` instead. This fixture
+is what `parse_variable_features()` and `feature_with_expression()` are tested
+against, including the detail that unused value slots carry Onshape defaults
+like `"0.0*m"` rather than empty strings.
 
 ## `synthetic/` — hand-built, not real
 

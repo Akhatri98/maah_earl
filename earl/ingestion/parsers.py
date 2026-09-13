@@ -14,6 +14,7 @@ shape Onshape documents and guarantees:
 
 from __future__ import annotations
 
+import copy
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -590,3 +591,125 @@ def derive_topology(
             )
 
     return topology
+
+
+# --------------------------------------------------------------------------
+# Variable FEATURES (the writable form)
+# --------------------------------------------------------------------------
+
+# Variables in this document are `assignVariable` FEATURES in the part studio,
+# not rows of a Variable Studio table. The distinction decides how they are
+# written:
+#
+#   * GET /variables/.../variables  surfaces them read-only. It is the nice
+#     flat view `parse_variables` reads, and it reports `value: null` because
+#     it hands back only the authored expression.
+#   * POST to that same path is a 404 here -- verified against the live API.
+#     There is no variable studio to write to.
+#
+# So an edit means editing the FEATURE:
+#   POST /partstudios/.../features/featureid/{fid}
+#
+# The value lives in a different parameter per variable type, because the
+# feature carries one slot per type and reads whichever matches
+# `variableType`. Writing "0.4 in^2" into `lengthValue` of an ANY variable
+# would be ignored, or worse, silently taken as a length.
+_VALUE_PARAMETER = {
+    "LENGTH": "lengthValue",
+    "ANGLE": "angleValue",
+    "NUMBER": "numberValue",
+    "ANY": "anyValue",
+}
+
+VARIABLE_FEATURE_TYPE = "assignVariable"
+
+
+@dataclass
+class VariableFeature:
+    """One `assignVariable` feature -- the writable form of a variable.
+
+    `raw` is the complete BTMFeature wrapper as Onshape sent it. Edits are
+    made by mutating a copy of that wrapper and posting it back whole:
+    Onshape replaces the feature with what it is given, so a partial payload
+    would silently drop every parameter left out.
+    """
+
+    feature_id: str
+    name: str
+    variable_type: str
+    expression: str
+    raw: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def value_parameter_id(self) -> str | None:
+        return _VALUE_PARAMETER.get(self.variable_type.upper())
+
+
+def _parameters(body: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Index a feature's BTM parameter list by parameterId."""
+    out: dict[str, dict[str, Any]] = {}
+    for p in body.get("parameters") or []:
+        message = p.get("message") or {}
+        if message.get("parameterId"):
+            out[message["parameterId"]] = p
+    return out
+
+
+def parse_variable_features(payload: dict[str, Any]) -> list[VariableFeature]:
+    """Parse assignVariable features from GET /partstudios/.../features."""
+    out: list[VariableFeature] = []
+    for feature in (payload or {}).get("features") or []:
+        body = feature.get("message", feature)
+        if body.get("featureType") != VARIABLE_FEATURE_TYPE:
+            continue
+        params = _parameters(body)
+        name = ((params.get("name") or {}).get("message") or {}).get("value") or ""
+        variable_type = (
+            ((params.get("variableType") or {}).get("message") or {}).get("value")
+            or ""
+        )
+        value_id = _VALUE_PARAMETER.get(variable_type.upper())
+        expression = ""
+        if value_id and value_id in params:
+            expression = (params[value_id].get("message") or {}).get(
+                "expression"
+            ) or ""
+        out.append(
+            VariableFeature(
+                feature_id=body.get("featureId", "") or "",
+                name=name,
+                variable_type=variable_type,
+                expression=expression,
+                raw=feature,
+            )
+        )
+    return out
+
+
+def feature_with_expression(
+    feature: VariableFeature, expression: str
+) -> dict[str, Any]:
+    """A copy of the feature wrapper with its value expression replaced.
+
+    Deep-copied so the original stays intact -- the caller usually still needs
+    the before-value to build the ChangeEvent, and mutating it in place would
+    make the diff compare the new value against itself.
+    """
+    parameter_id = feature.value_parameter_id
+    if parameter_id is None:
+        raise ValueError(
+            f"variable {feature.name!r} has unsupported type "
+            f"{feature.variable_type!r}; known types are "
+            f"{sorted(_VALUE_PARAMETER)}"
+        )
+
+    updated = copy.deepcopy(feature.raw)
+    body = updated.get("message", updated)
+    params = _parameters(body)
+    if parameter_id not in params:
+        raise ValueError(
+            f"variable {feature.name!r} is typed {feature.variable_type!r} but "
+            f"carries no {parameter_id!r} parameter to write into"
+        )
+    params[parameter_id]["message"]["expression"] = expression
+    return updated

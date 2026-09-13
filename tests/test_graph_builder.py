@@ -56,10 +56,14 @@ def load_assembly() -> dict:
 
 
 def a_change() -> ChangeEvent:
+    """A feature edit on a member. The kind and the target have to agree: a
+    VARIABLE_EDIT names a variable, a FEATURE_EDIT names the entity it lands
+    on, and `variable_ref_edges` relies on that to know whether the change
+    needs bridging edges to reach the structure at all."""
     return ChangeEvent(
         id="chg-test",
-        kind=ChangeKind.VARIABLE_EDIT,
-        description="barArea reduced from 1 in^2 to 0.4 in^2",
+        kind=ChangeKind.FEATURE_EDIT,
+        description="m5 cross-section reduced from 1 in^2 to 0.4 in^2",
         target_id="m5",
         value_before="1 in^2",
         value_after="0.4 in^2",
@@ -405,6 +409,76 @@ class TestBenchmarkConstantsDoNotDrift(unittest.TestCase):
         made capacity read ~44% high."""
         graph = self.selfcheck.build_graph()
         self.assertNotIn("steel", graph.materials[0].name.lower())
+
+
+class TestVariableRefEdges(unittest.TestCase):
+    """A variable edit is the pipeline's primary change signal, but a variable
+    is not part of the structure. VARIABLE_REF edges are the bridge that lets
+    the walk start from it and reach anything at all."""
+
+    @staticmethod
+    def _variable_change(target: str) -> ChangeEvent:
+        return ChangeEvent(
+            id="chg-var",
+            kind=ChangeKind.VARIABLE_EDIT,
+            description=f"{target} edited",
+            target_id=target,
+            value_before="1 in^2",
+            value_after="0.4 in^2",
+        )
+
+    def _build(self, change: ChangeEvent, strict: bool = True):
+        return build_graph(
+            load_assembly(),
+            graph_id="g-var",
+            change=change,
+            source=a_source(),
+            strict=strict,
+        )
+
+    def test_barArea_drives_every_member(self):
+        graph = self._build(self._variable_change("barArea")).graph
+        refs = [e for e in graph.edges if e.kind is EdgeKind.VARIABLE_REF]
+        self.assertEqual(len(refs), 10)
+        self.assertEqual(
+            sorted(e.target_id for e in refs),
+            sorted(m.id for m in graph.members),
+        )
+        self.assertTrue(all(e.source_id == "barArea" for e in refs))
+
+    def test_bayWidth_drives_nodes_as_well_as_members(self):
+        graph = self._build(self._variable_change("bayWidth")).graph
+        targets = {
+            e.target_id for e in graph.edges if e.kind is EdgeKind.VARIABLE_REF
+        }
+        self.assertEqual(len(targets), 16)   # 10 members + 6 nodes
+
+    def test_graph_with_variable_edges_still_validates(self):
+        """validate() admits change.target_id as an edge endpoint, which is
+        exactly what makes a non-entity seed legal."""
+        self._build(self._variable_change("barArea")).graph.validate()
+
+    def test_undeclared_variable_is_flagged_not_silently_edgeless(self):
+        """An undeclared variable would reach nothing, and a change that
+        reaches nothing reads exactly like a safe change."""
+        with self.assertRaises(ValueError) as ctx:
+            self._build(self._variable_change("unknownVar"))
+        self.assertIn("nothing declares what it drives", str(ctx.exception))
+
+    def test_variable_edit_naming_a_member_needs_no_bridge(self):
+        """The walk can seed straight from a real entity, so this is tolerated
+        rather than treated as an undeclared variable."""
+        result = self._build(self._variable_change("m5"))
+        self.assertTrue(result.is_clean, result.problems)
+        self.assertEqual(
+            [e for e in result.graph.edges if e.kind is EdgeKind.VARIABLE_REF], []
+        )
+
+    def test_non_variable_change_emits_no_variable_edges(self):
+        graph = self._build(a_change()).graph
+        self.assertEqual(
+            [e for e in graph.edges if e.kind is EdgeKind.VARIABLE_REF], []
+        )
 
 
 if __name__ == "__main__":
