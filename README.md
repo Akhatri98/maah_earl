@@ -29,6 +29,8 @@ cp .env.example .env                                # fill in what you have; eve
 
 python3 -m unittest discover -s tests -t . -q        # 723 tests, all offline
 
+python3 scripts/demo.py                              # THE DEMO: six acts, offline, ~4 min
+python3 scripts/demo.py --pause                      # stop between acts, for rehearsal
 python3 scripts/run_pipeline.py                      # the demo change, every stage, offline
 python3 scripts/run_pipeline.py --onshape-fixture    # Track A's graph builder on the recorded Onshape read
 python3 scripts/run_pipeline.py --skyciv --send      # live SkyCiv + Gmail (needs credentials)

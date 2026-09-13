@@ -1,0 +1,494 @@
+[
+  {
+    "scenario_id": "s01-thin-m7-demo",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s01-thin-m7-demo",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After reducing m7 from 8.203 in^2 to 6 in^2, member m5 stress rises to 234.6 MPa (34.0 ksi) which exceeds allowable 172.37 MPa (25 ksi). Safety factor = 0.73 < 1.0, so m5 is UNSAFE. All other members remain below allowable. Before change, all members were safe (m5 was 156.7 MPa, SF 1.10)."
+  },
+  {
+    "scenario_id": "s02-thin-m3",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s02-thin-m3",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After reducing m3 area from 25.52 to 19.14 in^2, member m5 stress increases from 156.7 MPa to 173.24 MPa, exceeding allowable 172.37 MPa. Safety factor = 172.37/173.24 = 0.995 <1.0, so m5 is UNSAFE. All other members remain below allowable."
+  },
+  {
+    "scenario_id": "s03-thin-m1-severe",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m1",
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m1",
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s03-thin-m1-severe",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m1",
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m1",
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After reducing m1 area 10x, FEA shows m1 stress = 402 MPa (58.3 ksi) > allowable 172 MPa (25 ksi), SF=0.43. Due to indeterminate redistribution, m5 stress goes from 156 MPa tension (safe) to -180.6 MPa compression (26.2 ksi), exceeding allowable, SF=0.95. Both members are unsafe."
+  },
+  {
+    "scenario_id": "s04-thin-m4-half",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s04-thin-m4-half",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "After reducing m4 area from 16.742 to 8.371 in^2, solved lc_benchmark. All member |stress| < allowable 172.37 MPa. Highest is m5 at 157.27 MPa (SF=1.096), next m7 at 115.9 MPa (SF=1.49), m4 at 82.3 MPa (SF=2.09). No member exceeds allowable, so no unsafe members."
+  },
+  {
+    "scenario_id": "s05-thin-m8-mild",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s05-thin-m8-mild",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Solved lc_benchmark after change: max |stress| is m5 at 130 MPa, allowable 172.37 MPa, SF=1.33 >1. All other members have lower stresses (m7 116 MPa, m8 57 MPa, etc.). No member exceeds allowable, so change is safe."
+  },
+  {
+    "scenario_id": "s06-thicken-m1",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s06-thicken-m1",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After doubling m1 area, FEA for lc_benchmark shows m5 stress = 176.1 MPa > allowable 172.37 MPa, SF = 0.979 < 1.0. All other members remain below allowable. Stiffer m1 attracts load redistribution that overstresses m5."
+  },
+  {
+    "scenario_id": "s07-thicken-m8",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s07-thicken-m8",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After change, member m5 stress = 197.3 MPa exceeds allowable 172.37 MPa (SF = 0.87). Before change m5 was 156.7 MPa (safe). Increasing m8 area from 23.144 to 46.288 in^2 stiffened that load path and redistributed force, overstressing m5. All other members remain below allowable."
+  },
+  {
+    "scenario_id": "s08-thicken-m5",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s08-thicken-m5",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Checked all 10 members in lc_benchmark after change. Allowable stress 172.37 MPa. Max absolute stress is m5 at 148.55 MPa (SF=1.16), down from 156.7 MPa before. All other members have SF >1.5. No member exceeds allowable, so change is safe."
+  },
+  {
+    "scenario_id": "s09-remove-m7",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s09-remove-m7",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "[verdict extracted from the model's prose] Removal of diagonal m7 (n5-n4) causes severe load redistribution. Under lc_benchmark, members m2 (-1221.6 MPa, SF 0.14), m5 (5046.3 MPa, SF 0.034), m6 (-221.8 MPa, SF 0.78), and m10 (1727.7 MPa, SF 0.10) exceed aluminium allowable 172.37 MPa. All were safe before removal."
+  },
+  {
+    "scenario_id": "s10-remove-m9",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6",
+      "m7"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6",
+      "m7"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s10-remove-m9",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6",
+      "m7"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m5",
+      "m6",
+      "m7"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "Removal of m9 (n3-n2 diagonal) removes primary load path. After change, members m2, m5, m6, m7, m10 exceed allowable stress 172.37 MPa: m2 6267 MPa, m5 506 MPa, m6 1137 MPa, m7 228 MPa, m10 8864 MPa compression. Safety factors <1.0. Displacements >3m indicate near-mechanism. Before change all members were safe."
+  },
+  {
+    "scenario_id": "s11-remove-m2",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s11-remove-m2",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Removed member m2 (0.11 in^2 top chord). Solved lc_benchmark before and after. After removal, max stress is m5 at 157.2 MPa (22.8 ksi) vs allowable 172.37 MPa (25 ksi), SF ~1.10. All other members: m1 41.6 MPa, m3 53.4 MPa, m4 41.2 MPa, m6 0, m7 115.9 MPa, m8 43.2 MPa, m9 41.2 MPa, m10 0. All |stress| < allowable, so no unsafe members. Structure remains stable with n1-n2 vertical becoming zero-force."
+  },
+  {
+    "scenario_id": "s12-remove-m5",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s12-remove-m5",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Removed m5 (0.11 in^2 vertical). Solved lc_benchmark before and after. Before max stress was m5 at 156.7 MPa (SF 1.10). After removal, max stress is m7 at 118.7 MPa (SF 1.45). All 9 remaining members have |stress| < 172.37 MPa allowable (25 ksi). No member exceeds allowable, so no unsafe members."
+  },
+  {
+    "scenario_id": "s13-load-n1-down",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s13-load-n1-down",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "Added 25 kip load at n1 overloads vertical member m6 (n1-n2). After change stress = -270.9 MPa (-39.29 ksi) magnitude exceeds allowable 172.37 MPa (25 ksi). Safety factor = 172.37/270.89 = 0.636 <1.0. All other members remain below allowable (next highest is m5 at 138 MPa)."
+  },
+  {
+    "scenario_id": "s14-load-n1-lateral",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s14-load-n1-lateral",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After adding 50 kip (+X) at n1, FEA (lc_benchmark, after state) shows m2 stress = 2.36 GPa (342 ksi) and m10 stress = 1.09 GPa (158.5 ksi), both far exceeding allowable 172.37 MPa (25 ksi). Safety factors: m2 = 0.073, m10 = 0.157 <1.0. All other members remain below allowable. Before state all members were safe. The tiny 0.11 in2 members m2 and m10 cannot carry the added lateral load."
+  },
+  {
+    "scenario_id": "s15-load-n3-down",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s15-load-n3-down",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Added 50 kip at n3 increases loads but FEA after change shows all member stresses below 172.37 MPa allowable. Max stress is m7 at 116.9 MPa (SF 1.47), next m5 at 107.9 MPa (SF 1.60). No member exceeds allowable, so no unsafe members."
+  },
+  {
+    "scenario_id": "s16-load-n2-lateral",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s16-load-n2-lateral",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Added 100 kip +X at n2. Solved lc_benchmark after change: max |stress| is m5 at 131 MPa (SF 1.32), all members below allowable 172.37 MPa (25 ksi). No member has SF <1.0. Change reduces stress in previously higher members m3/m4/m5."
+  },
+  {
+    "scenario_id": "s17-move-n4-to-n1",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s17-move-n4-to-n1",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m6"
+    ],
+    "reported_unsafe_member_ids": [
+      "m10",
+      "m2",
+      "m6"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "After moving p_n4 from n4 to n1, FEA shows m2 stress 384 MPa, m6 stress -1068 MPa, m10 stress -544 MPa, all exceeding allowable 172.37 MPa (SF<1). Before change all members were safe. Load redistribution due to indeterminate truss overloads small-area members at n1."
+  },
+  {
+    "scenario_id": "s18-move-n2-to-n3",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s18-move-n2-to-n3",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Moved load p_n2 from n2 to n3. Solved lc_benchmark after change: max |stress| is m5 at 148.99 MPa, below allowable 172.37 MPa (SF=1.16). All other members have lower stresses (next highest m7 115.3 MPa). No member exceeds allowable, so no unsafe members."
+  },
+  {
+    "scenario_id": "s19-var-load-110",
+    "agent": "system",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": null
+  },
+  {
+    "scenario_id": "s19-var-load-110",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [
+      "m5"
+    ],
+    "reported_unsafe_member_ids": [
+      "m5"
+    ],
+    "truth_outcome": "escalated",
+    "reported_outcome": "escalated",
+    "note": "Load increased 10% from 100 kip to 110 kip. Member m5 stress went from 156.7 MPa (SF ~1.10) to 172.378 MPa, which exceeds allowable 172.368925 MPa (25 ksi). Safety factor = 172368925 / 172378933 = 0.99994 < 1.0, so m5 is unsafe. All other members remain below allowable."
+  },
+  {
+    "scenario_id": "s20-var-area-110",
+    "agent": "system",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": null
+  },
+  {
+    "scenario_id": "s20-var-area-110",
+    "agent": "baseline",
+    "truth_unsafe_member_ids": [],
+    "reported_unsafe_member_ids": [],
+    "truth_outcome": "approved",
+    "reported_outcome": "approved",
+    "note": "Uniform 1.1x area scaling leaves forces unchanged (statically indeterminate but uniform stiffness scaling preserves distribution). Stresses drop by ~9%. Max stress is m5 at 142.5 MPa vs allowable 172.37 MPa, SF=1.21. All members have SF>1.0, so no unsafe members."
+  }
+]

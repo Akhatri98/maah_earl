@@ -1,0 +1,26 @@
+{
+  "scores": [
+    {
+      "agent": "system",
+      "scenarios": 20,
+      "unsafe_members_total": 22,
+      "caught": 22,
+      "dropped_dominoes": 0,
+      "false_alarms": 0,
+      "dropped_by_scenario": {},
+      "recall": 1.0,
+      "precision": 1.0
+    },
+    {
+      "agent": "baseline",
+      "scenarios": 20,
+      "unsafe_members_total": 22,
+      "caught": 22,
+      "dropped_dominoes": 0,
+      "false_alarms": 0,
+      "dropped_by_scenario": {},
+      "recall": 1.0,
+      "precision": 1.0
+    }
+  ]
+}
