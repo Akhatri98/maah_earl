@@ -13,7 +13,7 @@ these responses are **unverified against the live API**. Every file carries a
 
 | file | what it exercises |
 |---|---|
-| `solve_response.json` | happy-path call 1: session.start, model.set, model.solve, getReport, design.getInput; the 10-bar truss forces in kN, with `axial` deliberately given in every shape `parse_member_results` tolerates (scalar, flat list, `[position, value]` pairs, dict) and both str/int member keys |
+| `solve_response.json` | happy-path call 1: session.start, model.set, model.solve, getReport, design.getInput; the 10-bar truss forces in kN, with `axial` deliberately given in every shape `parse_member_results` tolerates (scalar, flat list, `[position, value]` pairs, dict); member keys are strings, as JSON object keys always are (int keys are covered by an in-code test in `tests/test_skyciv.py`, not by any fixture) |
 | `solve_response_list_combos.json` | solve data as a **list** of combination objects, forces only |
 | `design_check_response.json` | call 2: `S3D.design.member.check` per-member ratios |
 | `solve_failed_response.json` | `S3D.model.solve` with `status != 0` (a fatal function) |

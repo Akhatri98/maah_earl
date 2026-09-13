@@ -7,6 +7,8 @@ check must be exactly zero because scaling lives in the load combination.
 
 from __future__ import annotations
 
+import copy
+import dataclasses
 import sys
 import unittest
 from pathlib import Path
@@ -174,6 +176,36 @@ class TestRunSanityChecks(unittest.TestCase):
         checks = run_sanity_checks(graph, LOAD_CASE_ID, result)
         self.assertIsNone(checks.linearity_ok)
         self.assertIn("unstable", checks.note.lower())
+
+
+class TestDuplicateLoadCaseIds(unittest.TestCase):
+    """A graph with two load cases under one id is rejected by every entry
+    point here, never resolved to the first match (mirrors solver S4)."""
+
+    def setUp(self):
+        self.graph = build_ten_bar_graph()
+        self.result = solve(self.graph, LOAD_CASE_ID)   # solved BEFORE the twin is added
+        twin = copy.deepcopy(self.graph.load_cases[0])
+        twin.point_loads = []                            # different loads, same id
+        self.graph.load_cases.append(twin)
+        self.assertEqual([lc.id for lc in self.graph.load_cases], [LOAD_CASE_ID, LOAD_CASE_ID])
+
+    def test_equilibrium_check_rejects_duplicate(self):
+        with self.assertRaises(ValueError) as cm:
+            equilibrium_check(self.graph, self.result)
+        self.assertIn("duplicate load case id", str(cm.exception))
+        self.assertIn(LOAD_CASE_ID, str(cm.exception))
+
+    def test_linearity_check_rejects_duplicate(self):
+        with self.assertRaises(SolverError) as cm:
+            linearity_check(self.graph, LOAD_CASE_ID)
+        self.assertIn("duplicate load case id", str(cm.exception))
+
+    def test_unknown_id_message_unchanged(self):
+        stray = dataclasses.replace(self.result, load_case_id="lc_missing")
+        with self.assertRaises(ValueError) as cm:
+            equilibrium_check(build_ten_bar_graph(), stray)
+        self.assertIn("unknown load case 'lc_missing'", str(cm.exception))
 
 
 if __name__ == "__main__":

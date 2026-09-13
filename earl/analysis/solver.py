@@ -31,6 +31,17 @@ Why the adapter is more than a thin wrapper:
     singularity check can return finite garbage for a mechanism.
     `check_stability()` assembles the truss stiffness on the translational
     DOFs with numpy and rank-tests it BEFORE PyNite is called.
+  * OUT-OF-PLANE LOADS ARE REJECTED, NOT ABSORBED.  The planar restraint
+    above is a modelling device, not a support: a load along the planar
+    axis at a node the CONTRACT does not restrain would be carried by that
+    fictitious restraint, every member would read zero force, and Biject
+    would approve a structure that is actually a mechanism under that
+    load.  `check_planar_loads()` raises "unstable" for such loads (and
+    for lumped self-weight when Y is the planar axis) before PyNite runs.
+  * NUMERICS ARE CHECKED UP FRONT.  NaN/inf coordinates, loads, moduli or
+    strengths and non-positive areas propagate through PyNite (and through
+    Biject's safety factor) as silent garbage; `check_finite()` names the
+    offending entity and field instead.
 """
 
 from __future__ import annotations
@@ -64,6 +75,20 @@ G_ACCEL = 9.80665          # m/s^2 -- contract density is kg/m^3, so g lives her
 
 # Rank test tolerance for check_stability, relative to the largest diagonal.
 STABILITY_RANK_TOL = 1e-10
+
+# Planar-truss detection tolerance (planar_axis). A coordinate counts as
+# constant across all nodes when its spread is at most PLANAR_TOL times the
+# largest spread over all three axes (floored at 1.0 m so a tiny structure
+# is not judged against a zero extent). Exact equality would let 1e-17 of
+# CAD/export noise turn a planar truss into an out-of-plane mechanism.
+PLANAR_TOL = 1e-9
+
+# Coordinate axis and PointLoad component for each translational DOF.
+_AXIS_INFO: dict[str, tuple[str, str]] = {
+    "DX": ("x", "fx"),
+    "DY": ("y", "fy"),
+    "DZ": ("z", "fz"),
+}
 
 SOLVER_NAME = "PyNite"
 
@@ -176,12 +201,21 @@ def planar_axis(graph: DependencyGraph) -> str | None:
     Exactly one axis is chosen (a structure lying on a line would otherwise be
     over-restrained and never reported unstable); preference z, then y, then x
     -- z first because Node.z defaults to 0.0.
+
+    "Constant" is relative (PLANAR_TOL): the spread along the axis is compared
+    with the largest spread over all axes, floored at 1.0 m. This is the ONE
+    predicate every caller (restrained_dofs, hence check_stability,
+    check_planar_loads and build_model) uses, so they cannot disagree.
     """
     if not graph.nodes:
         return None
-    for axis, attr in (("DZ", "z"), ("DY", "y"), ("DX", "x")):
+    spreads = {}
+    for axis, (attr, _) in _AXIS_INFO.items():
         values = [getattr(n, attr) for n in graph.nodes]
-        if max(values) - min(values) == 0.0:
+        spreads[axis] = max(values) - min(values)
+    tol = PLANAR_TOL * max(max(spreads.values()), 1.0)
+    for axis in ("DZ", "DY", "DX"):
+        if spreads[axis] <= tol:
             return axis
     return None
 
@@ -221,13 +255,124 @@ def effective_self_weight(
 
 
 def _load_case(graph: DependencyGraph, load_case_id: str):
-    for lc in graph.load_cases:
-        if lc.id == load_case_id:
-            return lc
+    """The one load case with this id. Graph.validate() does not check load
+    case ids for uniqueness, and silently solving the first of two would tie
+    the verdict to list order -- so duplicates are a SolverError here."""
+    matches = [lc for lc in graph.load_cases if lc.id == load_case_id]
+    if len(matches) > 1:
+        raise SolverError(
+            f"duplicate load case id {load_case_id!r} on graph {graph.id!r} "
+            f"({len(matches)} load cases carry it)"
+        )
+    if matches:
+        return matches[0]
     known = [lc.id for lc in graph.load_cases]
     raise SolverError(
         f"unknown load case {load_case_id!r} on graph {graph.id!r}; known: {known}"
     )
+
+
+# --------------------------------------------------------------------------
+# Up-front numeric and modelling checks (run before PyNite sees anything)
+# --------------------------------------------------------------------------
+
+def _finite(value: float) -> bool:
+    try:
+        return math.isfinite(value)
+    except TypeError:
+        return False
+
+
+def check_finite(graph: DependencyGraph) -> None:
+    """Reject NaN/inf and non-physical numerics, naming entity and field.
+
+    Graph.validate() checks references, not values. A NaN coordinate or load
+    solves to NaN forces that Biject caps into "safe"; a zero area divides
+    stress by zero; a non-positive E or Fy gives a meaningless capacity.
+    Raises SolverError.
+    """
+    for n in graph.nodes:
+        for attr in ("x", "y", "z"):
+            v = getattr(n, attr)
+            if not _finite(v):
+                raise SolverError(f"node {n.id!r} has non-finite coordinate {attr}={v!r}")
+
+    for s in graph.sections:
+        if not _finite(s.area) or s.area <= 0.0:
+            raise SolverError(
+                f"section {s.id!r} has non-positive or non-finite area={s.area!r}"
+            )
+        for attr in ("iy", "iz", "j"):
+            v = getattr(s, attr)
+            if not _finite(v) or v < 0.0:
+                raise SolverError(
+                    f"section {s.id!r} has negative or non-finite {attr}={v!r}"
+                )
+
+    for m in graph.materials:
+        for attr in ("elastic_modulus", "yield_strength"):
+            v = getattr(m, attr)
+            if not _finite(v) or v <= 0.0:
+                raise SolverError(
+                    f"material {m.id!r} has non-positive or non-finite {attr}={v!r}"
+                )
+        if not _finite(m.density) or m.density < 0.0:
+            raise SolverError(
+                f"material {m.id!r} has negative or non-finite density={m.density!r}"
+            )
+
+    for lc in graph.load_cases:
+        for pl in lc.point_loads:
+            for attr in ("fx", "fy", "fz"):
+                v = getattr(pl, attr)
+                if not _finite(v):
+                    raise SolverError(
+                        f"load {pl.id!r} in load case {lc.id!r} has non-finite {attr}={v!r}"
+                    )
+
+
+def check_planar_loads(
+    graph: DependencyGraph, load_case_id: str, include_self_weight: bool | None = None
+) -> None:
+    """Reject loads along the planar axis at nodes the contract leaves free.
+
+    restrained_dofs() restrains the planar axis at EVERY node so the model is
+    not a mechanism out of its plane. That restraint is a modelling device:
+    at a node whose contract support does not restrain that axis, a load
+    along it would be absorbed by a fictitious reaction, every member would
+    read zero force and the structure would be approved -- when physically
+    it is a mechanism under that load. Point loads and (when the planar axis
+    is Y) lumped self-weight are checked. Raises SolverError with "unstable".
+    """
+    planar = planar_axis(graph)
+    if planar is None:
+        return
+    axis_name, component = _AXIS_INFO[planar]
+    lc = _load_case(graph, load_case_id)
+
+    def unrestrained(node_id: str) -> bool:
+        return planar not in _SUPPORT_DOFS[graph.node(node_id).support]
+
+    for pl in lc.point_loads:
+        value = getattr(pl, component)
+        if value != 0.0 and unrestrained(pl.node_id):
+            raise SolverError(
+                f"structure is unstable: load {pl.id!r} acts along {axis_name} "
+                f"({component}={value!r}), the out-of-plane axis of this planar "
+                f"truss, at unrestrained node {pl.node_id!r}"
+            )
+
+    if planar == "DY" and effective_self_weight(graph, load_case_id, include_self_weight):
+        for m in graph.members:
+            if lumped_self_weight(graph, m) <= 0.0:
+                continue
+            for node_id in (m.start_node, m.end_node):
+                if unrestrained(node_id):
+                    raise SolverError(
+                        f"structure is unstable: self-weight of member {m.id!r} acts "
+                        f"along y, the out-of-plane axis of this planar truss, at "
+                        f"unrestrained node {node_id!r}"
+                    )
 
 
 # --------------------------------------------------------------------------
@@ -369,11 +514,13 @@ def solve(
     load_scale: float = 1.0,
     include_self_weight: bool | None = None,
 ) -> SolveResult:
-    """Solve one load case. Raises SolverError for an unknown load case, an
-    empty structure, an unstable structure (message contains "unstable") or
-    any PyNite failure. Never mutates the graph."""
+    """Solve one load case. Raises SolverError for an unknown or duplicated
+    load case, non-finite numerics, an empty structure, an unstable structure
+    (message contains "unstable" -- including an out-of-plane load on a
+    planar truss) or any PyNite failure. Never mutates the graph."""
     graph.units.assert_si()
     graph.validate()
+    check_finite(graph)
     if not graph.members or not graph.nodes:
         raise SolverError(f"graph {graph.id!r} has no members to analyse")
     if not math.isfinite(load_scale):
@@ -381,6 +528,7 @@ def solve(
 
     with_weight = effective_self_weight(graph, load_case_id, include_self_weight)
     check_stability(graph)
+    check_planar_loads(graph, load_case_id, include_self_weight)
     model = build_model(
         graph, load_case_id, load_scale=load_scale, include_self_weight=include_self_weight
     )

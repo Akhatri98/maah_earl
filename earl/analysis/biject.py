@@ -15,12 +15,18 @@ Conventions (binding for everything Track B emits):
     a negative one against the compression capacity.
   * CAPACITY IS INTERNAL IN FORCE, EXTERNAL IN STRESS (R6).  `Capacity` (this
     module only) holds forces: tension = Fy*A, compression = min(Fy*A, Euler
-    Pcr = pi^2 E I_min / (K L)^2) when an inertia is provided, else Fy*A with
-    the note "inertia not provided; buckling not checked". The contract's
-    `MemberResult.capacity` is a STRESS in Pa (capacity_force / area): Fy when
-    yield governs, Pcr/A when buckling governs, so that
+    Pcr = pi^2 E I_min / (K L)^2) over the inertias that ARE provided
+    (positive). No inertia -> Fy*A with the note "inertia not provided;
+    buckling not checked"; exactly one -> Pcr about that axis with a note
+    that it is an upper bound (the missing axis could be weaker). The
+    contract's `MemberResult.capacity` is a STRESS in Pa (capacity_force /
+    area): Fy when yield governs, Pcr/A when buckling governs, so that
     capacity / |stress_after| == safety_factor exactly as in the Sprint 0 mock
     (scripts/contract_selfcheck.py).
+  * NUMBERS MUST BE NUMBERS.  A non-finite or non-positive area, yield
+    strength or elastic modulus, a non-finite force, or a non-finite safety
+    factor is a ValueError. NaN compares False against everything, so
+    "NaN < threshold" would read as PASS -- a NaN must never reach a verdict.
   * SAFETY FACTOR = capacity_force / |F|, capped at MAX_SAFETY_FACTOR (JSON
     has no Infinity). A ZERO-FORCE member (R7: |F| <= max(1e-9 N, 1e-9 x the
     largest |F| in the same SolveResult)) gets the cap, utilization 0.0 and
@@ -28,14 +34,22 @@ Conventions (binding for everything Track B emits):
   * EVERY member in graph.members is evaluated, whatever any plan says
     (R8: focus_member_ids is advisory). With several SolveResults (several
     load cases, or the contract and self-weight variants of one case) a
-    member's verdict is its WORST over all of them and the governing load
-    case id is written into its note.
+    member's verdict is its WORST over all of them and the governing VARIANT
+    KEY is written into its note.
+  * VARIANT KEYS (shared with gate.py).  `variant_key(graph, result)` is the
+    load case id when the result's `include_self_weight` equals the contract
+    flag of that load case, else "<lc_id>+self_weight" -- the variant a plan
+    added on top of the contract (R8, additive only). Both
+    `Verdict.governing_load_case_ids` and the `before` dict are keyed this
+    way, so a plan-added self-weight variant never borrows the contract
+    variant's before-state, and the note says which one governed.
   * A FAIL on a member that is NOT in graph.affected_member_ids is surfaced
     with a note, never hidden: it means the graph walker missed a dependency,
     which is exactly the "dropped domino" the project exists to catch.
-  * `before` (R11) is a dict of before-state SolveResults keyed by load case
-    id; a member's stress_before comes from the before result of ITS governing
-    case, else None with the note "no before-state for governing case <lc>".
+  * `before` (R11) is a dict of before-state SolveResults keyed by variant
+    key; a member's stress_before comes from the before result of ITS
+    governing variant, else None with the note "no before-state for
+    governing case <key>".
 """
 
 from __future__ import annotations
@@ -43,7 +57,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from ..contracts import DependencyGraph, MemberResult, MemberStatus, Outcome
+from ..contracts import DependencyGraph, LoadCase, MemberResult, MemberStatus, Outcome
 from .solver import MemberForce, SolveResult, member_length
 
 # A zero-force member would have an infinite safety factor; JSON cannot carry
@@ -56,13 +70,21 @@ EFFECTIVE_LENGTH_FACTOR = 1.0
 # R7 zero-force predicate: |F| <= max(ZERO_FORCE_ABS_TOL, ZERO_FORCE_REL_TOL * max|F|).
 ZERO_FORCE_ABS_TOL = 1e-9          # N
 ZERO_FORCE_REL_TOL = 1e-9
+# Suffix of the variant key for the self-weight variant a plan adds on top of
+# the contract load case (R8). gate.py builds its before-dict with the same key.
+SELF_WEIGHT_VARIANT_SUFFIX = "+self_weight"
 
 INERTIA_NOT_PROVIDED_NOTE = "inertia not provided; buckling not checked"
+ONE_INERTIA_NOTE = (
+    "only one inertia provided; buckling checked about that axis only "
+    "(upper bound on Pcr)"
+)
 ZERO_FORCE_NOTE = "zero-force member; safety factor capped"
 UNAFFECTED_FAIL_NOTE = (
     "unsafe but not in graph.affected_member_ids -- the graph walker may have "
     "missed a dependency"
 )
+SELF_WEIGHT_VARIANT_NOTE = "plan-added self-weight variant"
 
 
 # --------------------------------------------------------------------------
@@ -82,42 +104,61 @@ class Capacity:
     note: str | None
 
 
+def _require_positive_finite(value: float, what: str) -> float:
+    """B2: a NaN/inf/<= 0 property must stop the evaluation, not flow into a
+    safety factor. `bool(nan <= 0)` is False, so a plain sign check would let
+    NaN through -- hence math.isfinite first."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{what} must be a number, got {value!r}") from None
+    if not math.isfinite(number) or number <= 0.0:
+        raise ValueError(f"{what} must be finite and positive, got {value!r}")
+    return number
+
+
 def member_capacity(graph: DependencyGraph, member_id: str) -> Capacity:
     """Yield capacity Fy*A in tension; in compression the smaller of Fy*A and
-    the Euler load pi^2 E I_min / (K L)^2 when the section carries a positive
-    inertia. Sections with iy = iz = 0 (the benchmark's bars) are yield-only
-    and say so in the note -- the honest, illustrative check plan.md's Scope
-    note allows."""
+    the Euler load pi^2 E I_min / (K L)^2 over the inertias the section
+    PROVIDES (positive). Sections with iy = iz = 0 (the benchmark's bars) are
+    yield-only and say so in the note -- the honest, illustrative check
+    plan.md's Scope note allows. A section with only one positive inertia
+    (B1) is still checked about that axis: skipping the check because the
+    other axis is unknown would hide a real buckling failure, so the note
+    says the Pcr is an upper bound instead."""
     member = graph.member(member_id)
     section = graph.section(member.section_id)
     material = graph.material(member.material_id)
-    if section.area <= 0.0:
-        raise ValueError(f"member {member_id!r} has non-positive area {section.area}")
-    if material.yield_strength <= 0.0:
-        raise ValueError(
-            f"material {material.id!r} has non-positive yield strength "
-            f"{material.yield_strength}"
-        )
+    area = _require_positive_finite(section.area, f"member {member_id!r} area")
+    fy = _require_positive_finite(
+        material.yield_strength, f"material {material.id!r} yield strength"
+    )
+    modulus = _require_positive_finite(
+        material.elastic_modulus, f"material {material.id!r} elastic modulus"
+    )
 
-    yield_force = material.yield_strength * section.area
-    i_min = min(section.iy, section.iz)
-    if i_min <= 0.0:
+    yield_force = fy * area
+    provided = [i for i in (section.iy, section.iz) if i > 0.0]
+    if not provided:
         return Capacity(member_id, yield_force, yield_force, "yield", INERTIA_NOT_PROVIDED_NOTE)
+    i_min = min(provided)
+    if not math.isfinite(i_min):
+        raise ValueError(f"member {member_id!r} has a non-finite inertia {i_min!r}")
+    notes: list[str] = []
+    if len(provided) == 1:
+        notes.append(ONE_INERTIA_NOTE)
 
     length = member_length(graph, member)
-    if length <= 0.0:
-        raise ValueError(f"member {member_id!r} has zero length")
+    if not math.isfinite(length) or length <= 0.0:
+        raise ValueError(f"member {member_id!r} has a non-positive or non-finite length {length!r}")
     effective = EFFECTIVE_LENGTH_FACTOR * length
-    euler = math.pi ** 2 * material.elastic_modulus * i_min / effective ** 2
+    euler = math.pi ** 2 * modulus * i_min / effective ** 2
     if euler < yield_force:
-        return Capacity(
-            member_id,
-            yield_force,
-            euler,
-            "buckling",
-            f"Euler buckling governs compression (Pcr {euler:.4g} N < Fy*A {yield_force:.4g} N)",
+        notes.append(
+            f"Euler buckling governs compression (Pcr {euler:.4g} N < Fy*A {yield_force:.4g} N)"
         )
-    return Capacity(member_id, yield_force, yield_force, "yield", None)
+        return Capacity(member_id, yield_force, euler, "buckling", "; ".join(notes))
+    return Capacity(member_id, yield_force, yield_force, "yield", "; ".join(notes) or None)
 
 
 # --------------------------------------------------------------------------
@@ -168,15 +209,21 @@ def evaluate_member(
     status = FAIL iff SF < threshold. `force_floor` is the R7 zero-force
     level -- `evaluate()` derives it from the whole SolveResult; the default is
     the absolute floor alone. A FAIL on a member that is not `is_affected`
-    carries UNAFFECTED_FAIL_NOTE.
+    carries UNAFFECTED_FAIL_NOTE. A non-finite force or safety factor is a
+    ValueError (B2): NaN would compare False against the threshold and read
+    as PASS.
     """
     threshold = _check_threshold(threshold)
     member = graph.member(member_id)
+    cap = member_capacity(graph, member_id)      # validates area, Fy, E
     area = graph.section(member.section_id).area
-    cap = member_capacity(graph, member_id)
     notes: list[str] = []
     if cap.note:
         notes.append(cap.note)
+
+    magnitude = abs(force.axial_force)
+    if not math.isfinite(magnitude):
+        raise ValueError(f"member {member_id!r} has a non-finite axial force {force.axial_force!r}")
 
     if force.axial_force >= 0.0:
         capacity_force = cap.tension
@@ -184,20 +231,26 @@ def evaluate_member(
         capacity_force = cap.compression
     capacity_stress = capacity_force / area
 
-    magnitude = abs(force.axial_force)
-    if not math.isfinite(magnitude):
-        raise ValueError(f"member {member_id!r} has a non-finite axial force {force.axial_force!r}")
-
     if magnitude <= force_floor:
         safety_factor = MAX_SAFETY_FACTOR
         utilization = 0.0
         notes.append(ZERO_FORCE_NOTE)
     else:
         safety_factor = capacity_force / magnitude
+        if not math.isfinite(safety_factor):
+            raise ValueError(
+                f"member {member_id!r} has a non-finite safety factor {safety_factor!r} "
+                f"(capacity {capacity_force!r} N, |F| {magnitude!r} N)"
+            )
         if safety_factor >= MAX_SAFETY_FACTOR:
             safety_factor = MAX_SAFETY_FACTOR
             notes.append(f"safety factor capped at {MAX_SAFETY_FACTOR:g}")
         utilization = 1.0 / safety_factor
+
+    # Belt and braces: whatever path produced it, a verdict is only taken
+    # from a finite number. NaN < threshold is False and would mean PASS.
+    if not math.isfinite(safety_factor):
+        raise ValueError(f"member {member_id!r} has a non-finite safety factor {safety_factor!r}")
 
     status = MemberStatus.FAIL if safety_factor < threshold else MemberStatus.PASS
     if status is MemberStatus.FAIL and not is_affected:
@@ -219,6 +272,55 @@ def evaluate_member(
 
 
 # --------------------------------------------------------------------------
+# Variant keys (shared convention with gate.py)
+# --------------------------------------------------------------------------
+
+def _load_case(graph: DependencyGraph, load_case_id: str) -> LoadCase:
+    for lc in graph.load_cases:
+        if lc.id == load_case_id:
+            return lc
+    raise ValueError(
+        f"SolveResult is for load case {load_case_id!r}, which graph {graph.id!r} "
+        "does not define"
+    )
+
+
+def variant_key(graph: DependencyGraph, result: SolveResult) -> str:
+    """The key under which `result` is tracked in `Verdict.governing_load_case_ids`
+    and looked up in `before`.
+
+    The contract variant (the result's `include_self_weight` equals the load
+    case's own flag) is keyed by the bare load case id; the variant a plan
+    added on top (self-weight switched on for a case whose flag is off, R8) is
+    keyed "<lc_id>+self_weight". Keeping them apart is what lets a before-state
+    solved WITHOUT self-weight never be paired with an after-state solved WITH
+    it: the gate builds its before dict with exactly these keys.
+    """
+    lc = _load_case(graph, result.load_case_id)
+    # "Plan-added" means self-weight is ON in the result while the contract
+    # flag is OFF. The other mismatch (flag on, result off) happens when no
+    # material has a density -- solver.effective_self_weight applies nothing
+    # -- and that is still the contract run, not a plan-added variant.
+    if bool(result.include_self_weight) and not bool(lc.include_self_weight):
+        return f"{result.load_case_id}{SELF_WEIGHT_VARIANT_SUFFIX}"
+    return result.load_case_id
+
+
+def is_self_weight_variant(key: str) -> bool:
+    return key.endswith(SELF_WEIGHT_VARIANT_SUFFIX)
+
+
+def governing_note(key: str) -> str:
+    """The member note for a governing variant key: "governing load case 'lc_x'"
+    for the contract variant, "... (plan-added self-weight variant)" for the
+    other, so a reader can tell which of the two runs of one load case won."""
+    if is_self_weight_variant(key):
+        lc_id = key[: -len(SELF_WEIGHT_VARIANT_SUFFIX)]
+        return f"governing load case {lc_id!r} ({SELF_WEIGHT_VARIANT_NOTE})"
+    return f"governing load case {key!r}"
+
+
+# --------------------------------------------------------------------------
 # Verdict over one graph and one or many solved load cases
 # --------------------------------------------------------------------------
 
@@ -233,7 +335,8 @@ class Verdict:
     member_results: list[MemberResult]
     violating_member_ids: list[str]
     threshold: float
-    # Which solved load case each member's verdict came from (worst SF).
+    # Which solved variant each member's verdict came from (worst SF), as a
+    # variant key (see `variant_key`): "lc_x" or "lc_x+self_weight".
     governing_load_case_ids: dict[str, str] = field(default_factory=dict)
 
     def result(self, member_id: str) -> MemberResult:
@@ -258,10 +361,13 @@ def evaluate(
 
     threshold < MIN_ALLOWED_THRESHOLD (or non-finite) -> ValueError. Every
     member in graph.members is evaluated in every result; its verdict is the
-    WORST (lowest SF) and the governing load case id goes into its note.
-    `before` is keyed by load case id (R11): stress_before is read from the
-    before result of the member's governing case, else None with a note.
-    There is deliberately NO parameter that can force APPROVED.
+    WORST (lowest SF) and the governing variant key goes into its note --
+    "governing load case 'lc_x'" for the contract variant, with
+    "(plan-added self-weight variant)" appended for the variant a plan added.
+    `before` is keyed by variant key (R11, see `variant_key`): stress_before
+    is read from the before result of the member's governing variant, else
+    None with a note. There is deliberately NO parameter that can force
+    APPROVED.
     """
     graph.units.assert_si()
     threshold = _check_threshold(threshold)
@@ -277,6 +383,7 @@ def evaluate(
                 f"SolveResult is for graph {r.graph_id!r}, not {graph.id!r}; "
                 "pass the after-state results here and the before-state via `before`"
             )
+    keys = [variant_key(graph, r) for r in results]
     floors = [zero_force_floor(r) for r in results]
     affected = set(graph.affected_member_ids)
 
@@ -284,8 +391,8 @@ def evaluate(
     governing: dict[str, str] = {}
     for member in graph.members:
         worst: MemberResult | None = None
-        worst_case: str | None = None
-        for r, floor in zip(results, floors):
+        worst_key: str | None = None
+        for r, key, floor in zip(results, keys, floors):
             if member.id not in r.member_forces:
                 raise ValueError(
                     f"SolveResult for load case {r.load_case_id!r} carries no force "
@@ -300,19 +407,19 @@ def evaluate(
                 force_floor=floor,
             )
             if worst is None or candidate.safety_factor < worst.safety_factor:
-                worst, worst_case = candidate, r.load_case_id
-        assert worst is not None and worst_case is not None
-        _append_note(worst, f"governing load case {worst_case!r}")
+                worst, worst_key = candidate, key
+        assert worst is not None and worst_key is not None
+        _append_note(worst, governing_note(worst_key))
 
         if before is not None:
-            source = before.get(worst_case)
+            source = before.get(worst_key)
             if source is not None and member.id in source.member_forces:
                 worst.stress_before = source.force(member.id).stress
             else:
                 worst.stress_before = None
-                _append_note(worst, f"no before-state for governing case {worst_case!r}")
+                _append_note(worst, f"no before-state for governing case {worst_key!r}")
 
-        governing[member.id] = worst_case
+        governing[member.id] = worst_key
         member_results.append(worst)
 
     violating = sorted(r.member_id for r in member_results if r.status is MemberStatus.FAIL)

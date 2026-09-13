@@ -15,6 +15,7 @@ import math
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -30,13 +31,18 @@ from earl.analysis.biject import (  # noqa: E402
     INERTIA_NOT_PROVIDED_NOTE,
     MAX_SAFETY_FACTOR,
     MIN_ALLOWED_THRESHOLD,
+    ONE_INERTIA_NOTE,
+    SELF_WEIGHT_VARIANT_NOTE,
+    SELF_WEIGHT_VARIANT_SUFFIX,
     UNAFFECTED_FAIL_NOTE,
     ZERO_FORCE_NOTE,
     Capacity,
     Verdict,
     evaluate,
     evaluate_member,
+    governing_note,
     member_capacity,
+    variant_key,
     zero_force_floor,
 )
 from earl.analysis.solver import MemberForce, SolveResult, member_length, solve  # noqa: E402
@@ -93,9 +99,16 @@ def _triangle(*, iy: float = 0.0, iz: float = 0.0, affected: tuple[str, ...] = (
     )
 
 
-def _result(graph: DependencyGraph, forces: dict[str, float], lc: str = LC_A) -> SolveResult:
+def _result(
+    graph: DependencyGraph,
+    forces: dict[str, float],
+    lc: str = LC_A,
+    *,
+    self_weight: bool = False,
+) -> SolveResult:
     """A SolveResult with the given axial forces (N, tension positive) and
-    consistent stress/area/length, for members present in `forces`."""
+    consistent stress/area/length, for members present in `forces`.
+    `self_weight` is what the solver would report in `include_self_weight`."""
     member_forces = {}
     for mid, f in forces.items():
         m = graph.member(mid)
@@ -103,7 +116,7 @@ def _result(graph: DependencyGraph, forces: dict[str, float], lc: str = LC_A) ->
         member_forces[mid] = MemberForce(mid, f, f / area, area, member_length(graph, m))
     return SolveResult(
         graph_id=graph.id, load_case_id=lc, member_forces=member_forces,
-        displacements={}, reactions={},
+        displacements={}, reactions={}, include_self_weight=self_weight,
     )
 
 
@@ -442,6 +455,245 @@ class TestInputGuards(unittest.TestCase):
         self.assertIsInstance(verdict, Verdict)
         self.assertEqual(verdict.threshold, THRESHOLD)
         self.assertEqual(len(verdict.member_results), len(self.graph.members))
+
+
+class TestOneInertiaBuckling(unittest.TestCase):
+    """B1: a section that provides only ONE positive inertia is still checked
+    for buckling about that axis. Treating min(iy, iz) == 0 as "not provided"
+    silently skipped the check and let a slender strut PASS on yield."""
+
+    I_SMALL = 1.0e-9
+
+    def _pcr(self, graph: DependencyGraph) -> float:
+        length = member_length(graph, graph.member("m1"))
+        return math.pi ** 2 * E_STEEL * self.I_SMALL / (EFFECTIVE_LENGTH_FACTOR * length) ** 2
+
+    def test_iy_only_buckling_governs_and_fails(self):
+        graph = _triangle(iy=self.I_SMALL, iz=0.0)
+        pcr = self._pcr(graph)
+        self.assertLess(pcr, FY * AREA)
+
+        cap = member_capacity(graph, "m1")
+        self.assertEqual(cap.governing, "buckling")
+        self.assertAlmostEqual(cap.compression, pcr)
+        self.assertAlmostEqual(cap.tension, FY * AREA)
+        self.assertIn(ONE_INERTIA_NOTE, cap.note)
+        self.assertIn("Euler buckling governs", cap.note)
+        self.assertNotIn(INERTIA_NOT_PROVIDED_NOTE, cap.note)
+
+        # A slender strut compressed past Pcr but well below Fy*A must FAIL.
+        result = _result(graph, _all(graph, m1=-1.5 * pcr))
+        verdict = evaluate(graph, result, THRESHOLD)
+        m1 = verdict.result("m1")
+        self.assertIs(m1.status, MemberStatus.FAIL)
+        self.assertAlmostEqual(m1.capacity, pcr / AREA)
+        self.assertAlmostEqual(m1.safety_factor, 1.0 / 1.5)
+        self.assertIn(ONE_INERTIA_NOTE, m1.note)
+        self.assertIs(verdict.outcome, Outcome.ESCALATED)
+        self.assertEqual(verdict.violating_member_ids, ["m1"])
+
+    def test_iz_only_is_symmetric(self):
+        graph = _triangle(iy=0.0, iz=self.I_SMALL)
+        cap = member_capacity(graph, "m1")
+        self.assertEqual(cap.governing, "buckling")
+        self.assertAlmostEqual(cap.compression, self._pcr(graph))
+        self.assertIn(ONE_INERTIA_NOTE, cap.note)
+
+    def test_one_large_inertia_yield_governs_but_still_notes_upper_bound(self):
+        graph = _triangle(iy=1.0e-3, iz=0.0)
+        cap = member_capacity(graph, "m1")
+        self.assertEqual(cap.governing, "yield")
+        self.assertAlmostEqual(cap.compression, FY * AREA)
+        self.assertEqual(cap.note, ONE_INERTIA_NOTE)
+
+    def test_both_inertias_have_no_upper_bound_note(self):
+        graph = _triangle(iy=self.I_SMALL, iz=self.I_SMALL)
+        self.assertNotIn(ONE_INERTIA_NOTE, member_capacity(graph, "m1").note)
+        graph = _triangle(iy=1.0e-3, iz=1.0e-3)
+        self.assertIsNone(member_capacity(graph, "m1").note)
+
+    def test_negative_inertia_counts_as_not_provided(self):
+        graph = _triangle(iy=-1.0, iz=0.0)
+        cap = member_capacity(graph, "m1")
+        self.assertEqual(cap.governing, "yield")
+        self.assertEqual(cap.note, INERTIA_NOT_PROVIDED_NOTE)
+
+
+class TestNonFiniteNumerics(unittest.TestCase):
+    """B2: NaN compares False against everything, so "NaN < threshold" would
+    read as PASS. Every non-finite input is a ValueError, never a verdict."""
+
+    def _graph_with(self, *, area: float = AREA, fy: float = FY, e: float = E_STEEL) -> DependencyGraph:
+        graph = _triangle()
+        graph.sections[0].area = area
+        graph.materials[0].yield_strength = fy
+        graph.materials[0].elastic_modulus = e
+        return graph
+
+    def test_yield_nan_rejected(self):
+        graph = self._graph_with(fy=math.nan)
+        with self.assertRaises(ValueError):
+            member_capacity(graph, "m1")
+        with self.assertRaises(ValueError):
+            evaluate(graph, _result(graph, _all(graph)), THRESHOLD)
+
+    def test_yield_inf_rejected(self):
+        graph = self._graph_with(fy=math.inf)
+        with self.assertRaises(ValueError):
+            member_capacity(graph, "m1")
+        with self.assertRaises(ValueError):
+            evaluate(graph, _result(graph, _all(graph)), THRESHOLD)
+
+    def test_area_nan_rejected(self):
+        graph = self._graph_with(area=math.nan)
+        with self.assertRaises(ValueError):
+            member_capacity(graph, "m1")
+        with self.assertRaises(ValueError):
+            evaluate(graph, _result(graph, _all(graph)), THRESHOLD)
+
+    def test_area_inf_and_nonpositive_rejected(self):
+        for bad in (math.inf, 0.0, -1.0e-3):
+            graph = self._graph_with(area=bad)
+            with self.assertRaises(ValueError):
+                member_capacity(graph, "m1")
+
+    def test_modulus_nan_inf_nonpositive_rejected(self):
+        """E is validated even on the yield-only path: a material carrying NaN
+        is corrupt input whichever number Biject happens to use."""
+        for bad in (math.nan, math.inf, 0.0, -1.0):
+            graph = self._graph_with(e=bad)
+            with self.assertRaises(ValueError):
+                member_capacity(graph, "m1")
+
+    def test_non_finite_force_rejected(self):
+        graph = _triangle()
+        for bad in (math.nan, math.inf, -math.inf):
+            force = MemberForce("m1", bad, bad / AREA, AREA, member_length(graph, graph.member("m1")))
+            with self.assertRaises(ValueError):
+                evaluate_member(graph, "m1", force, THRESHOLD, is_affected=True)
+
+    def test_non_finite_safety_factor_rejected(self):
+        """Even if a capacity somehow came out non-finite, the safety factor
+        guard stops it before a status is assigned."""
+        graph = _triangle()
+        force = _result(graph, _all(graph)).force("m1")
+        for bad in (math.nan, math.inf):
+            fake = Capacity("m1", bad, bad, "yield", None)
+            with mock.patch("earl.analysis.biject.member_capacity", return_value=fake):
+                with self.assertRaises(ValueError):
+                    evaluate_member(graph, "m1", force, THRESHOLD, is_affected=True)
+
+    def test_nan_can_never_become_an_approved_decision(self):
+        """End to end: the only way out of a NaN input is an exception, so no
+        Decision -- APPROVED least of all -- can be assembled from it."""
+        graph = self._graph_with(fy=math.nan)
+        result = _result(graph, _all(graph))
+        try:
+            verdict = evaluate(graph, result, THRESHOLD)
+        except ValueError:
+            return
+        self.fail(f"NaN yield strength produced a verdict: {verdict.outcome}")
+
+    def test_finite_inputs_still_evaluate(self):
+        graph = self._graph_with()
+        self.assertIs(evaluate(graph, _result(graph, _all(graph)), THRESHOLD).outcome, Outcome.APPROVED)
+
+
+class TestVariantKeys(unittest.TestCase):
+    """B3: the contract run and the plan-added self-weight run of one load
+    case are two variants with two keys, so the worst wins, the note says
+    which, and the before-state is looked up under the same key."""
+
+    def setUp(self):
+        self.graph = _triangle()          # both load cases have the flag off
+        self.key_sw = f"{LC_A}{SELF_WEIGHT_VARIANT_SUFFIX}"
+
+    def test_contract_variant_key_is_the_load_case_id(self):
+        r = _result(self.graph, _all(self.graph), LC_A)
+        self.assertEqual(variant_key(self.graph, r), LC_A)
+
+    def test_plan_added_self_weight_key_has_suffix(self):
+        r = _result(self.graph, _all(self.graph), LC_A, self_weight=True)
+        self.assertEqual(variant_key(self.graph, r), f"{LC_A}+self_weight")
+        self.assertEqual(SELF_WEIGHT_VARIANT_SUFFIX, "+self_weight")
+
+    def test_contract_flag_on_is_the_contract_variant(self):
+        """A load case whose contract flag is on, solved with self-weight, is
+        the contract variant; solved WITHOUT it (no material has a density,
+        so the solver applied nothing) it is still the contract run."""
+        graph = _triangle()
+        graph.load_cases[0].include_self_weight = True
+        self.assertEqual(variant_key(graph, _result(graph, _all(graph), LC_A, self_weight=True)), LC_A)
+        self.assertEqual(variant_key(graph, _result(graph, _all(graph), LC_A, self_weight=False)), LC_A)
+
+    def test_unknown_load_case_rejected(self):
+        r = _result(self.graph, _all(self.graph), "lc_missing")
+        with self.assertRaises(ValueError):
+            variant_key(self.graph, r)
+        with self.assertRaises(ValueError):
+            evaluate(self.graph, r, THRESHOLD)
+
+    def test_governing_note_wording(self):
+        self.assertEqual(governing_note(LC_A), f"governing load case {LC_A!r}")
+        self.assertEqual(
+            governing_note(self.key_sw),
+            f"governing load case {LC_A!r} ({SELF_WEIGHT_VARIANT_NOTE})",
+        )
+        self.assertEqual(SELF_WEIGHT_VARIANT_NOTE, "plan-added self-weight variant")
+
+    def _two_variants(self, *, sw_worse: bool):
+        contract = _result(self.graph, _all(self.graph, m1=0.5 * FY * AREA), LC_A)          # SF 2
+        f_sw = 2.0 * FY * AREA if sw_worse else 0.25 * FY * AREA                           # SF 0.5 / 4
+        sw = _result(self.graph, _all(self.graph, m1=f_sw), LC_A, self_weight=True)
+        return contract, sw
+
+    def test_self_weight_variant_wins_when_worse(self):
+        contract, sw = self._two_variants(sw_worse=True)
+        verdict = evaluate(self.graph, [contract, sw], THRESHOLD)
+        m1 = verdict.result("m1")
+        self.assertIs(m1.status, MemberStatus.FAIL)
+        self.assertAlmostEqual(m1.safety_factor, 0.5)
+        self.assertEqual(verdict.governing_load_case_ids["m1"], self.key_sw)
+        self.assertIn(f"governing load case {LC_A!r} ({SELF_WEIGHT_VARIANT_NOTE})", m1.note)
+        self.assertIs(verdict.outcome, Outcome.ESCALATED)
+        # Order of the results must not matter.
+        swapped = evaluate(self.graph, [sw, contract], THRESHOLD)
+        self.assertEqual(swapped.governing_load_case_ids["m1"], self.key_sw)
+
+    def test_contract_variant_wins_when_worse(self):
+        contract, sw = self._two_variants(sw_worse=False)
+        verdict = evaluate(self.graph, [contract, sw], THRESHOLD)
+        m1 = verdict.result("m1")
+        self.assertAlmostEqual(m1.safety_factor, 2.0)
+        self.assertEqual(verdict.governing_load_case_ids["m1"], LC_A)
+        self.assertIn(f"governing load case {LC_A!r}", m1.note)
+        self.assertNotIn(SELF_WEIGHT_VARIANT_NOTE, m1.note)
+
+    def test_stress_before_comes_from_the_governing_variant(self):
+        contract, sw = self._two_variants(sw_worse=True)
+        before_contract = _result(self.graph, _all(self.graph, m1=1.0e3), LC_A)
+        before_sw = _result(self.graph, _all(self.graph, m1=7.0e3), LC_A, self_weight=True)
+        verdict = evaluate(
+            self.graph, [contract, sw], THRESHOLD,
+            before={LC_A: before_contract, self.key_sw: before_sw},
+        )
+        m1 = verdict.result("m1")
+        self.assertAlmostEqual(m1.stress_before, 7.0e3 / AREA)
+        self.assertNotIn("no before-state", m1.note)
+        # m2 ties across both variants; the first result (contract) wins.
+        self.assertAlmostEqual(verdict.result("m2").stress_before, 1.0e3 / AREA)
+
+    def test_missing_variant_before_gives_none_and_note(self):
+        """A before-state solved only for the contract variant must NOT be
+        borrowed by the self-weight variant: different loads, different
+        baseline."""
+        contract, sw = self._two_variants(sw_worse=True)
+        before_contract = _result(self.graph, _all(self.graph, m1=1.0e3), LC_A)
+        verdict = evaluate(self.graph, [contract, sw], THRESHOLD, before={LC_A: before_contract})
+        m1 = verdict.result("m1")
+        self.assertIsNone(m1.stress_before)
+        self.assertIn(f"no before-state for governing case {self.key_sw!r}", m1.note)
+        self.assertIsNotNone(verdict.result("m2").stress_before)
 
 
 if __name__ == "__main__":

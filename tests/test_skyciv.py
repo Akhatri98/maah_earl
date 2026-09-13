@@ -312,6 +312,27 @@ class TestParseMemberResults(unittest.TestCase):
         results = parse_member_results(data, {"m1": 1})
         self.assertEqual(list(results), ["m1"])
 
+    def test_int_member_keys_accepted(self):
+        """JSON object keys are always strings, so no fixture can carry int
+        keys; a transport that pre-parses ids (or a test double) can, and the
+        parser maps them through str() to the same contract ids."""
+        data = {
+            "member_forces": {1: {"axial": 2.5}, 2: {"axial": -4.0}},
+            "member_stresses": {1: {"axial": 10.0}, 2: {"axial": -16.0}},
+        }
+        results = parse_member_results(data, {"m1": 1, "m2": 2})
+        self.assertEqual(set(results), {"m1", "m2"})
+        self.assertAlmostEqual(results["m1"].axial_force, 2500.0)
+        self.assertAlmostEqual(results["m2"].axial_force, -4000.0)
+        self.assertAlmostEqual(results["m1"].stress, 10.0e6)
+        self.assertAlmostEqual(results["m2"].stress, -16.0e6)
+
+    def test_fixture_member_keys_are_strings(self):
+        """Pins the fixture documentation: the JSON round-trip cannot produce
+        int keys, so the int-key path is covered only by the test above."""
+        for table in ("member_forces", "member_stresses"):
+            self.assertTrue(all(isinstance(k, str) for k in self.data["1"][table]))
+
 
 class TestParseReportLink(unittest.TestCase):
     def test_top_level_download_key(self):
@@ -328,6 +349,34 @@ class TestParseReportLink(unittest.TestCase):
     def test_missing(self):
         self.assertIsNone(parse_report_link({"status": "ok"}))
         self.assertIsNone(parse_report_link(None))
+
+    def test_decoy_keys_do_not_shadow_the_real_link(self):
+        """`url_expiry` and `link_type` contain the hints but are not links;
+        they sit *before* the real key and must be skipped, not returned."""
+        data = {
+            "url_expiry": "24h",
+            "link_type": "pdf",
+            "file_url": "reports/synthetic.pdf",       # relative, not http(s)
+            "download_link": "https://x/real.pdf",
+        }
+        self.assertEqual(parse_report_link(data), "https://x/real.pdf")
+
+    def test_hint_priority_download_then_link_then_url(self):
+        data = {"url": "https://x/c.pdf", "link": "https://x/b.pdf", "download": "https://x/a.pdf"}
+        self.assertEqual(parse_report_link(data), "https://x/a.pdf")
+        del data["download"]
+        self.assertEqual(parse_report_link(data), "https://x/b.pdf")
+        del data["link"]
+        self.assertEqual(parse_report_link(data), "https://x/c.pdf")
+
+    def test_non_http_hint_value_falls_through_to_nested(self):
+        data = {"url": "24h", "report": {"download_link": "https://x/nested.pdf"}}
+        self.assertEqual(parse_report_link(data), "https://x/nested.pdf")
+        self.assertIsNone(parse_report_link({"url": "not-a-url", "link": 42}))
+
+    def test_list_of_candidates(self):
+        data = [{"link_type": "pdf"}, {"url": "https://x/in-list.pdf"}]
+        self.assertEqual(parse_report_link(data), "https://x/in-list.pdf")
 
 
 class TestParseDesignResults(unittest.TestCase):
@@ -522,6 +571,61 @@ class TestSkyCivClient(unittest.TestCase):
             self.assertEqual(json.loads(one.read_text())["last_session_id"], "sess-synthetic-0001")
             self.assertEqual(json.loads(two.read_text())["functions"][0]["function"], FN_DESIGN_CHECK)
 
+    def test_record_dir_keeps_failed_calls_as_error_files(self):
+        """A metered call that failed is still on disk: the smoke test needs
+        the error body to correct the constants block."""
+        with tempfile.TemporaryDirectory() as tmp:
+            record_dir = Path(tmp) / "recorded"
+            client, _ = self.make_client(
+                [SkyCivError("HTTP 503 for x: maintenance", status=503, body="maintenance page")],
+                record_dir=record_dir,
+            )
+            with self.assertRaises(SkyCivError):
+                client.analyze(self.graph, "lc_1")
+            error_file = record_dir / "skyciv_analyze_1_error.json"
+            self.assertTrue(error_file.exists())
+            self.assertFalse((record_dir / "skyciv_analyze_1.json").exists())
+            record = json.loads(error_file.read_text(encoding="utf-8"))
+            self.assertEqual(record["label"], "skyciv_analyze_1")
+            self.assertEqual(record["error"], "SkyCivError")
+            self.assertEqual(record["status"], 503)
+            self.assertEqual(record["body"], "maintenance page")
+            self.assertIn("maintenance", record["message"])
+            self.assertEqual(record["functions"][:3], [FN_SESSION_START, FN_MODEL_SET, FN_MODEL_SOLVE])
+
+    def test_record_dir_keeps_transport_exceptions_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            record_dir = Path(tmp) / "recorded"
+            client, _ = self.make_client(
+                [requests.ConnectionError("dns failure")], record_dir=record_dir
+            )
+            with self.assertRaises(SkyCivError):
+                client.call([{"function": FN_SESSION_START, "arguments": {}}], label="probe")
+            record = json.loads((record_dir / "probe_error.json").read_text(encoding="utf-8"))
+            self.assertEqual(record["error"], "ConnectionError")
+            self.assertIn("dns failure", record["message"])
+            self.assertIsNone(record["status"])
+            self.assertIsNone(record["body"])
+
+    def test_no_error_file_without_record_dir_or_on_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            record_dir = Path(tmp) / "recorded"
+            client, _ = self.make_client([load_fixture("solve_response.json")], record_dir=record_dir)
+            client.analyze(self.graph, "lc_1", design_code=None)
+            self.assertEqual(sorted(p.name for p in record_dir.iterdir()), ["skyciv_analyze_1.json"])
+        client, _ = self.make_client([SkyCivError("boom", status=500)])
+        with self.assertRaises(SkyCivError):
+            client.call([{"function": FN_SESSION_START, "arguments": {}}], label="x")
+        self.assertEqual(client.log[-1].status, -1)     # logged, nothing to write
+
+    def test_repr_does_not_leak_the_api_key(self):
+        client = SkyCivClient(config=make_config(), transport=FakeTransport([]))
+        text = repr(client)
+        self.assertNotIn("not-a-real-key", text)
+        self.assertNotIn("tester@example.com", text)
+        self.assertNotIn("config=", text)
+        self.assertIn("SkyCivClient(", text)
+
     def test_download_report_uses_injected_downloader(self):
         def downloader(url: str, dest: Path) -> Path:
             dest.write_bytes(b"%PDF-stub " + url.encode())
@@ -577,8 +681,25 @@ class TestDefaultTransport(unittest.TestCase):
     def test_non_json_body_raises_skyciv_error(self):
         self.install(FakeResponse(200, "<html>login</html>"))
         client = SkyCivClient(config=make_config())
-        with self.assertRaises(SkyCivError):
+        with self.assertRaises(SkyCivError) as ctx:
             client.call([{"function": FN_SESSION_START, "arguments": {}}], label="x")
+        self.assertEqual(ctx.exception.body, "<html>login</html>")
+
+    def test_http_error_body_is_recorded_in_full(self):
+        """The message truncates the body to 500 chars; the record file keeps
+        all of it, which is what the smoke test needs to read."""
+        long_body = "E" * 2000
+        self.install(FakeResponse(502, long_body))
+        with tempfile.TemporaryDirectory() as tmp:
+            record_dir = Path(tmp) / "recorded"
+            client = SkyCivClient(config=make_config(), record_dir=record_dir)
+            with self.assertRaises(SkyCivError) as ctx:
+                client.call([{"function": FN_SESSION_START, "arguments": {}}], label="x")
+            self.assertEqual(ctx.exception.body, long_body)
+            record = json.loads((record_dir / "x_error.json").read_text(encoding="utf-8"))
+            self.assertEqual(record["status"], 502)
+            self.assertEqual(record["body"], long_body)
+            self.assertLess(len(record["message"]), len(long_body))
 
     def test_posts_to_port_qualified_base_url_with_timeout(self):
         self.install(FakeResponse(200, "{}", payload={"functions": []}))

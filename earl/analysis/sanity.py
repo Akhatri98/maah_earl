@@ -44,10 +44,20 @@ LINEARITY_ZERO_STRESS = 1e-9           # Pa
 
 
 def _load_case(graph: DependencyGraph, load_case_id: str):
-    for lc in graph.load_cases:
-        if lc.id == load_case_id:
-            return lc
-    raise ValueError(f"unknown load case {load_case_id!r} on graph {graph.id!r}")
+    """The one load case carrying `load_case_id`.  A duplicate id is rejected
+    (mirroring solver._load_case) rather than silently resolved to the first
+    match: `equilibrium_check` takes a ready-made SolveResult, so it is the
+    only path here that solve() has not already guarded, and balancing a
+    result against the WRONG case's loads would report a spurious failure."""
+    matches = [lc for lc in graph.load_cases if lc.id == load_case_id]
+    if len(matches) > 1:
+        raise ValueError(
+            f"duplicate load case id {load_case_id!r} on graph {graph.id!r} "
+            f"({len(matches)} load cases carry it)"
+        )
+    if not matches:
+        raise ValueError(f"unknown load case {load_case_id!r} on graph {graph.id!r}")
+    return matches[0]
 
 
 def equilibrium_check(graph: DependencyGraph, result: SolveResult) -> tuple[bool, float]:

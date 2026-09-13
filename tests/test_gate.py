@@ -4,21 +4,34 @@ Runs the real solver and Biject on the R1 demo (optimum with m7 thinned):
 the edited member passes and its neighbour m5 fails -- the downstream domino.
 The rest pins the guardrails: the threshold floor raises before any solve,
 every crash is an ERROR decision that still validates, the plan can neither
-narrow the evaluation nor drop self-weight, and a broken before-state can
-only cost a stress_before, never the verdict.
+narrow the evaluation nor drop self-weight, a broken before-state can only
+cost a stress_before, never the verdict, a failed sanity check can never
+coexist with APPROVED/ESCALATED, and duplicate load case ids are an ERROR
+rather than a silent narrowing.  The last section drives the two Track B
+scripts that sit on top of the gate (scripts/run_fast_gate.py and the pure
+parts of scripts/skyciv_smoke.py) -- offline, with fake clients.
 Every test passes threshold=1.0 explicitly -- never the developer's .env.
 """
 
 from __future__ import annotations
 
+import argparse
+import contextlib
+import io
+import json
 import math
+import os
 import sys
+import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from earl.analysis.benchmark import (  # noqa: E402
     LOAD_CASE_ID,
@@ -26,13 +39,23 @@ from earl.analysis.benchmark import (  # noqa: E402
     demo_change_graph,
 )
 from earl.analysis.gate import (  # noqa: E402
+    check_unique_load_case_ids,
     error_decision,
     not_evaluated_results,
     resolve_threshold,
     run_fast_gate,
+    run_gate,
+    sanity_failure,
 )
 from earl.analysis.orchestrator import AnalysisPlan  # noqa: E402
 from earl.analysis.solver import SOLVER_VERSION, solve  # noqa: E402
+from earl.artifacts.skyciv_client import (  # noqa: E402
+    FN_MODEL_SET,
+    FN_MODEL_SOLVE,
+    FN_REPORT_ALT,
+    FN_SESSION_START,
+    SkyCivRun,
+)
 from earl.contracts import (  # noqa: E402
     ChangeEvent,
     ChangeKind,
@@ -46,11 +69,15 @@ from earl.contracts import (  # noqa: E402
     OnshapeRef,
     Outcome,
     PointLoad,
+    SanityChecks,
     Section,
     SupportType,
     Units,
     UnitSystem,
 )
+
+import run_fast_gate as gate_script  # noqa: E402  (scripts/run_fast_gate.py)
+import skyciv_smoke  # noqa: E402  (scripts/skyciv_smoke.py; pure parts only)
 
 REL_TOL = 1e-2
 EXPECTED_M5_SF = 0.806
@@ -380,6 +407,390 @@ class TestAllLoadCases(unittest.TestCase):
         r = d.result("m5")
         self.assertIsNotNone(r.stress_before)
         self.assertAlmostEqual(r.stress_before, r.stress_after, delta=1.0)   # same structure
+
+
+class TestSelfWeightVariantBeforeState(unittest.TestCase):
+    """G2: the plan-added self-weight variant is keyed "<lc>+self_weight" on
+    both sides, so its stress_before comes from a before solve WITH weight."""
+
+    def setUp(self):
+        # Demo contract: lc_benchmark has include_self_weight False, the
+        # aluminium has density > 0, so a plan asking for weight ADDS a variant.
+        self.graph = demo_change_graph()
+        self.before = demo_before_graph()
+        self.assertFalse(self.graph.load_cases[0].include_self_weight)
+        self.assertTrue(all(m.density > 0 for m in self.graph.materials))
+        self.planner = FakePlanner(AnalysisPlan(LOAD_CASE_ID, include_self_weight=True,
+                                                focus_member_ids=[], rationale="", source="llm"))
+
+    def test_before_dict_is_keyed_by_variant(self):
+        run, checks = run_gate(self.graph, threshold=1.0, planner=self.planner, before=self.before)
+        self.assertEqual(set(run.before_results), {LOAD_CASE_ID, f"{LOAD_CASE_ID}+self_weight"})
+        self.assertFalse(run.before_results[LOAD_CASE_ID].include_self_weight)
+        self.assertTrue(run.before_results[f"{LOAD_CASE_ID}+self_weight"].include_self_weight)
+        self.assertNotIn("before-state not analysed", checks.note or "")
+
+    def test_governing_note_names_the_variant_and_before_matches_it(self):
+        d = run_fast_gate(self.graph, threshold=1.0, planner=self.planner, before=self.before)
+        self.assertIs(d.outcome, Outcome.ESCALATED)
+        r = d.result("m5")
+        # With weight every demo member is loaded harder, so the variant governs.
+        self.assertIn(
+            f"governing load case {LOAD_CASE_ID!r} (plan-added self-weight variant)", r.note
+        )
+        self.assertNotIn("no before-state", r.note)
+        with_weight = solve(self.before, LOAD_CASE_ID, include_self_weight=True).force("m5").stress
+        without = solve(self.before, LOAD_CASE_ID).force("m5").stress
+        self.assertNotAlmostEqual(with_weight, without, delta=1.0)
+        self.assertAlmostEqual(r.stress_before, with_weight, delta=1.0)
+        self.assertNotAlmostEqual(r.stress_before, without, delta=1.0)
+        d.validate()
+
+    def test_variant_before_failure_is_isolated_per_variant(self):
+        """R11 per variant: when only the WITH-weight before solve fails, the
+        contract variant keeps its before-state, the self-weight variant loses
+        its own with a note naming the variant key, and the verdict stands."""
+        from earl.analysis import gate as gate_module
+        from earl.analysis.solver import SolverError
+        real_solve = gate_module.solve
+        before = self.before
+
+        def flaky(graph, lc_id, **kw):
+            if graph is before and kw.get("include_self_weight"):
+                raise SolverError("weight solve exploded")
+            return real_solve(graph, lc_id, **kw)
+
+        with mock.patch.object(gate_module, "solve", side_effect=flaky):
+            run, checks = run_gate(self.graph, threshold=1.0, planner=self.planner, before=before)
+        key = f"{LOAD_CASE_ID}+self_weight"
+        self.assertEqual(set(run.before_results), {LOAD_CASE_ID})
+        self.assertIn(f"before-state not analysed for {key!r}: SolverError: weight solve exploded",
+                      "; ".join(run.notes))
+        self.assertIs(run.verdict.outcome, Outcome.ESCALATED)
+        m5 = run.verdict.result("m5")
+        self.assertIsNone(m5.stress_before)
+        self.assertIn(f"no before-state for governing case {key!r}", m5.note)
+
+    def test_weightless_before_graph_gives_weightless_variant_before(self):
+        """A before graph with no density cannot carry weight; solve() applies
+        none and the "+self_weight" key honestly holds the weightless numbers
+        (result.include_self_weight False) rather than a fabricated heavier one."""
+        before = demo_before_graph()
+        for m in before.materials:
+            m.density = 0.0
+        run, _ = run_gate(self.graph, threshold=1.0, planner=self.planner, before=before)
+        key = f"{LOAD_CASE_ID}+self_weight"
+        self.assertEqual(set(run.before_results), {LOAD_CASE_ID, key})
+        self.assertFalse(run.before_results[key].include_self_weight)
+        self.assertAlmostEqual(
+            run.before_results[key].force("m5").stress,
+            run.before_results[LOAD_CASE_ID].force("m5").stress, delta=1.0,
+        )
+
+
+class TestDuplicateLoadCaseIds(unittest.TestCase):
+    """G1: two load cases under one id would be solved once and the rest
+    silently dropped; instead it is an ERROR decision."""
+
+    def _dup_graph(self) -> DependencyGraph:
+        graph = demo_before_graph()
+        graph.load_cases.append(_extra_load_case(graph.load_cases[0], LOAD_CASE_ID, 2.5))
+        return graph
+
+    def test_check_raises_and_names_the_id(self):
+        with self.assertRaises(ValueError) as ctx:
+            check_unique_load_case_ids(self._dup_graph())
+        self.assertIn("duplicate load case ids", str(ctx.exception))
+        self.assertIn(LOAD_CASE_ID, str(ctx.exception))
+        check_unique_load_case_ids(demo_before_graph())     # unique: no raise
+
+    def test_gate_returns_error_decision(self):
+        graph = self._dup_graph()
+        graph.validate()                                    # the contract lets it through
+        d = run_fast_gate(graph, threshold=1.0)
+        self.assertIs(d.outcome, Outcome.ERROR)
+        self.assertTrue(d.error_message.startswith("ValueError: duplicate load case ids"))
+        self.assertIn(LOAD_CASE_ID, d.error_message)
+        self.assertEqual(d.violating_member_ids, [])
+        self.assertTrue(all(r.status is MemberStatus.NOT_EVALUATED for r in d.member_results))
+        d.validate()
+
+    def test_duplicate_in_before_graph_is_only_a_note(self):
+        d = run_fast_gate(demo_change_graph(), threshold=1.0, before=self._dup_graph())
+        self.assertIs(d.outcome, Outcome.ESCALATED)
+        self.assertEqual(d.violating_member_ids, ["m5"])
+        self.assertIsNone(d.result("m5").stress_before)
+        self.assertIn("duplicate load case ids", d.sanity_checks.note)
+
+
+class TestSanityFailureIsError(unittest.TestCase):
+    """G3: a solve the gate itself flagged as nonsense is neither an approval
+    nor a finding -- ERROR, with Biject's numbers kept for the reviewer."""
+
+    def _gate_with_checks(self, checks: SanityChecks, graph: DependencyGraph | None = None) -> Decision:
+        with mock.patch("earl.analysis.gate.run_sanity_checks", return_value=checks) as fake:
+            d = run_fast_gate(graph or demo_change_graph(), threshold=1.0)
+        self.assertEqual(fake.call_count, 1)
+        return d
+
+    def test_equilibrium_failure_becomes_error_keeping_results(self):
+        checks = SanityChecks(equilibrium_ok=False, max_residual_force=123.0, linearity_ok=True,
+                              note="equilibrium residual 1.230e+02 N exceeds tolerance")
+        d = self._gate_with_checks(checks)
+        self.assertIs(d.outcome, Outcome.ERROR)
+        self.assertTrue(d.error_message.startswith("sanity check failed: equilibrium residual"))
+        self.assertIn("1.230e+02 N", d.error_message)
+        # The Biject numbers are kept, consistently: m5 still FAIL and listed.
+        self.assertEqual(d.violating_member_ids, ["m5"])
+        self.assertIs(d.result("m5").status, MemberStatus.FAIL)
+        self.assertTrue(_rel_close(d.result("m5").safety_factor, EXPECTED_M5_SF))
+        self.assertIs(d.result("m7").status, MemberStatus.PASS)
+        self.assertFalse(d.sanity_checks.equilibrium_ok)
+        self.assertEqual(d.sanity_checks.max_residual_force, 123.0)
+        d.validate()
+        Decision.from_json(d.to_json()).validate()
+
+    def test_linearity_failure_quotes_the_deviation(self):
+        checks = SanityChecks(equilibrium_ok=True, max_residual_force=0.0, linearity_ok=False,
+                              note="linearity deviation 2.500e-03 exceeds tolerance")
+        d = self._gate_with_checks(checks, demo_before_graph())     # would be APPROVED
+        self.assertIs(d.outcome, Outcome.ERROR)
+        self.assertEqual(
+            d.error_message, "sanity check failed: linearity deviation 2.500e-03 exceeds tolerance"
+        )
+        self.assertEqual(d.violating_member_ids, [])
+        self.assertTrue(all(r.status is MemberStatus.PASS for r in d.member_results))
+        d.validate()
+
+    def test_both_failing_names_both(self):
+        checks = SanityChecks(equilibrium_ok=False, max_residual_force=None, linearity_ok=False)
+        msg = sanity_failure(checks)
+        self.assertEqual(
+            msg,
+            "sanity check failed: equilibrium residual exceeds tolerance; "
+            "linearity deviation exceeds tolerance",
+        )
+
+    def test_checks_that_could_not_run_are_not_a_failure(self):
+        """None means "not run" (the reason is in the note); only False fails."""
+        self.assertIsNone(sanity_failure(SanityChecks()))
+        self.assertIsNone(sanity_failure(SanityChecks(equilibrium_ok=True, linearity_ok=None)))
+        checks = SanityChecks(equilibrium_ok=None, linearity_ok=None, note="equilibrium check not run")
+        d = self._gate_with_checks(checks)
+        self.assertIs(d.outcome, Outcome.ESCALATED)
+        self.assertIsNone(d.error_message)
+        self.assertIn("equilibrium check not run", d.sanity_checks.note)
+
+    def test_real_checks_pass_so_demo_is_not_error(self):
+        d = run_fast_gate(demo_change_graph(), threshold=1.0)
+        self.assertIs(d.outcome, Outcome.ESCALATED)
+        self.assertIsNone(d.error_message)
+
+
+# --------------------------------------------------------------------------
+# The scripts on top of the gate (offline)
+# --------------------------------------------------------------------------
+
+def _run_script(argv: list[str]) -> tuple[int, str, str]:
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = gate_script.main(argv)
+    return code, out.getvalue(), err.getvalue()
+
+
+class TestRunFastGateScript(unittest.TestCase):
+    """G4: a malformed --graph is an ERROR decision (exit 1) with the files
+    written, not a traceback before the gate runs."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _write_graph(self, graph: DependencyGraph, name: str) -> str:
+        path = self.dir / name
+        path.write_text(graph.to_json(), encoding="utf-8")
+        return str(path)
+
+    def test_load_graph_does_not_validate(self):
+        graph = demo_change_graph()
+        graph.members[0].start_node = "nope"
+        with self.assertRaises(ValueError):
+            graph.validate()
+        loaded = gate_script._load_graph(self._write_graph(graph, "bad.json"))
+        self.assertEqual(loaded.members[0].start_node, "nope")
+
+    def test_malformed_graph_is_error_decision_with_files(self):
+        graph = demo_change_graph()
+        graph.members[0].start_node = "nope"
+        out, svg = self.dir / "decision.json", self.dir / "truss.svg"
+        code, stdout, stderr = _run_script([
+            "--no-llm", "--threshold", "1.0",
+            "--graph", self._write_graph(graph, "bad.json"),
+            "--out", str(out), "--svg", str(svg),
+        ])
+        self.assertEqual(code, gate_script.EXIT_ERROR)
+        self.assertTrue(out.exists())
+        decision = Decision.from_json(out.read_text(encoding="utf-8"))
+        decision.validate()
+        self.assertIs(decision.outcome, Outcome.ERROR)
+        self.assertIn("unknown node 'nope'", decision.error_message)
+        self.assertIn("outcome=ERROR", stdout)
+        # A member pointing at a node that does not exist cannot be drawn;
+        # that is reported, not raised, and the JSON above is still written.
+        self.assertFalse(svg.exists())
+        self.assertIn("svg not written", stderr)
+
+    def test_duplicate_load_case_ids_write_both_files(self):
+        graph = demo_before_graph()
+        graph.load_cases.append(_extra_load_case(graph.load_cases[0], LOAD_CASE_ID, 2.5))
+        out, svg = self.dir / "decision.json", self.dir / "truss.svg"
+        code, stdout, _ = _run_script([
+            "--no-llm", "--threshold", "1.0",
+            "--graph", self._write_graph(graph, "dup.json"),
+            "--out", str(out), "--svg", str(svg),
+        ])
+        self.assertEqual(code, gate_script.EXIT_ERROR)
+        decision = Decision.from_json(out.read_text(encoding="utf-8"))
+        self.assertIs(decision.outcome, Outcome.ERROR)
+        self.assertIn("duplicate load case ids", decision.error_message)
+        self.assertTrue(svg.exists())
+        self.assertIn("<svg", svg.read_text(encoding="utf-8"))
+
+    def test_malformed_before_graph_is_a_note(self):
+        before = demo_before_graph()
+        before.members[0].start_node = "nope"
+        code, stdout, _ = _run_script([
+            "--no-llm", "--threshold", "1.0",
+            "--before", self._write_graph(before, "before.json"),
+        ])
+        self.assertEqual(code, gate_script.EXIT_ESCALATED)
+        self.assertIn("before-state not analysed", stdout)
+
+    def test_demo_exit_codes(self):
+        code, stdout, _ = _run_script(["--no-llm", "--threshold", "1.0"])
+        self.assertEqual(code, gate_script.EXIT_ESCALATED)
+        self.assertIn("violating  : ['m5']", stdout)
+        code, _, stderr = _run_script(["--no-llm", "--threshold", "0.5"])
+        self.assertEqual(code, gate_script.EXIT_ERROR)
+        self.assertIn("misconfiguration", stderr)
+
+
+class _FakeSkyCivClient:
+    """Records the one POST retry_report_alt makes; never touches the network."""
+
+    def __init__(self, status: int = 0):
+        self.calls: list[dict[str, Any]] = []
+        self.status = status
+
+    def call(self, functions, *, label, session_id=None):
+        self.calls.append({"functions": functions, "label": label, "session_id": session_id})
+        return {
+            "response": {"data": "ok"},
+            "functions": [
+                {"function": f["function"], "status": self.status,
+                 "data": {"link": "https://example.invalid/report.pdf"}
+                 if f["function"] == FN_REPORT_ALT else None,
+                 "msg": "no"}
+                for f in functions
+            ],
+        }
+
+
+def _skyciv_run(session_id: str | None) -> SkyCivRun:
+    return SkyCivRun(session_id=session_id, member_results={}, report_url=None,
+                     design_results={}, design_code=None, raw={}, api_calls=1,
+                     warnings=["S3D.results.getReport failed: nope"])
+
+
+class TestSkyCivSmokeScript(unittest.TestCase):
+    """G5: the pure parts of scripts/skyciv_smoke.py, with a fake client."""
+
+    def _call(self, session_id: str | None, session_open: bool, status: int = 0):
+        client = _FakeSkyCivClient(status)
+        graph = demo_before_graph()
+        with contextlib.redirect_stdout(io.StringIO()):
+            url = skyciv_smoke.retry_report_alt(
+                client, graph, LOAD_CASE_ID, _skyciv_run(session_id), session_open=session_open
+            )
+        self.assertEqual(len(client.calls), 1)
+        return url, client.calls[0]
+
+    def test_closed_session_is_rebuilt_in_one_call(self):
+        """Call 1 without a design check starts its session with keep_open=False;
+        the id it returned is dead, so the model is set and solved again."""
+        url, call = self._call("dead-session", session_open=False)
+        names = [f["function"] for f in call["functions"]]
+        self.assertEqual(names, [FN_SESSION_START, FN_MODEL_SET, FN_MODEL_SOLVE, FN_REPORT_ALT])
+        self.assertIsNone(call["session_id"])
+        self.assertIn("s3d_model", call["functions"][1]["arguments"])
+        self.assertEqual(url, "https://example.invalid/report.pdf")
+
+    def test_open_session_is_reused(self):
+        url, call = self._call("live-session", session_open=True)
+        self.assertEqual([f["function"] for f in call["functions"]], [FN_REPORT_ALT])
+        self.assertEqual(call["session_id"], "live-session")
+        self.assertEqual(url, "https://example.invalid/report.pdf")
+
+    def test_open_but_unknown_session_is_rebuilt(self):
+        _, call = self._call(None, session_open=True)
+        self.assertEqual(call["functions"][0]["function"], FN_SESSION_START)
+        self.assertIsNone(call["session_id"])
+
+    def test_failed_alt_report_returns_none(self):
+        url, _ = self._call("live-session", session_open=True, status=1)
+        self.assertIsNone(url)
+
+    def test_report_dir_default_sees_env_loaded_from_dotenv(self):
+        """load_env() runs before the parser, so a SKYCIV_REPORT_DIR that only
+        exists in .env becomes the --report-dir default.  Credentials are
+        deliberately absent so main() stops with EXIT_NO_CREDENTIALS before
+        any client is built."""
+        captured: list[argparse.Namespace] = []
+        original = argparse.ArgumentParser.parse_args
+
+        def spy(self, args=None, namespace=None):
+            ns = original(self, args, namespace)
+            captured.append(ns)
+            return ns
+
+        def fake_load_env(*a, **k):
+            os.environ["SKYCIV_REPORT_DIR"] = "/from/dotenv"
+            return {"SKYCIV_REPORT_DIR": "/from/dotenv"}
+
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("SKYCIV_API_USERNAME", "SKYCIV_API_KEY", "SKYCIV_REPORT_DIR")}
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(skyciv_smoke, "load_env", side_effect=fake_load_env) as le, \
+                mock.patch.object(argparse.ArgumentParser, "parse_args", spy), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            code = skyciv_smoke.main([])
+        self.assertEqual(code, skyciv_smoke.EXIT_NO_CREDENTIALS)
+        self.assertEqual(le.call_count, 1)
+        self.assertIn("refusing to run", err.getvalue())
+        self.assertEqual(captured[0].report_dir, "/from/dotenv")
+
+    def test_explicit_report_dir_wins_over_env(self):
+        captured: list[argparse.Namespace] = []
+        original = argparse.ArgumentParser.parse_args
+
+        def spy(self, args=None, namespace=None):
+            ns = original(self, args, namespace)
+            captured.append(ns)
+            return ns
+
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("SKYCIV_API_USERNAME", "SKYCIV_API_KEY")}
+        env["SKYCIV_REPORT_DIR"] = "/from/env"
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch.object(skyciv_smoke, "load_env", return_value={}), \
+                mock.patch.object(argparse.ArgumentParser, "parse_args", spy), \
+                contextlib.redirect_stderr(io.StringIO()):
+            code = skyciv_smoke.main(["--report-dir", "/explicit"])
+        self.assertEqual(code, skyciv_smoke.EXIT_NO_CREDENTIALS)
+        self.assertEqual(captured[0].report_dir, "/explicit")
 
 
 if __name__ == "__main__":

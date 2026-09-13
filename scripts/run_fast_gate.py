@@ -40,9 +40,11 @@ EXIT_ESCALATED = 2
 
 
 def _load_graph(path: str) -> DependencyGraph:
-    graph = DependencyGraph.from_json(Path(path).read_text(encoding="utf-8"))
-    graph.validate()
-    return graph
+    """Decode only -- deliberately NO graph.validate() here.  The gate turns a
+    validation ValueError into an ERROR decision (R10) that is still printed
+    and written to --out/--svg, and a bad --before graph only costs a note
+    (R11).  Validating here would trade both for a traceback and no files."""
+    return DependencyGraph.from_json(Path(path).read_text(encoding="utf-8"))
 
 
 def _fmt(value: float | None, unit_scale: float = 1.0, digits: int = 3) -> str:
@@ -133,7 +135,13 @@ def main(argv: list[str] | None = None) -> int:
         out.write_text(decision.to_json(), encoding="utf-8")
         print(f"\nwrote      : {out}")
     if args.svg:
-        print(f"wrote      : {save_truss_svg(graph, decision, args.svg)}")
+        try:
+            print(f"wrote      : {save_truss_svg(graph, decision, args.svg)}")
+        except (KeyError, ValueError) as e:
+            # A graph malformed enough to fail validation (a member naming a
+            # node that does not exist) cannot be drawn either; the Decision
+            # JSON above is the deliverable, the picture is best effort.
+            print(f"svg not written: {type(e).__name__}: {e}", file=sys.stderr)
 
     if decision.outcome is Outcome.APPROVED:
         return EXIT_APPROVED

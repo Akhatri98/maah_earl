@@ -32,11 +32,15 @@ imports Stage 2, not the other way round).
 | **`MemberResult.capacity` is a STRESS in Pa** (R6): `Fy` when yield governs, `Pcr / A` when Euler buckling governs, so `capacity / |stress_after| == safety_factor`. The force-valued `Capacity` dataclass is internal to `biject.py`. | `biject.evaluate_member` |
 | **Safety factor** `= capacity_force / |F|`, capped at `MAX_SAFETY_FACTOR = 1e6` (JSON has no Infinity). A zero-force member (`|F| <= max(1e-9 N, 1e-9 · max|F|)`) gets the cap, `utilization = 0.0` and the note `zero-force member; safety factor capped`. | `biject` |
 | **Threshold floor is code, not config.** `MIN_ALLOWED_THRESHOLD = 1.0`; Biject and the gate raise `ValueError` for anything below it or non-finite. `SAFETY_FACTOR_THRESHOLD` in `.env` can only raise the bar. | `biject._check_threshold`, `gate.resolve_threshold` |
-| **Every member is evaluated, every load case is evaluated.** `focus_member_ids` in a plan is advisory; with `evaluate_all_load_cases=True` (default) Biject takes each member's **worst** SF over all load cases and writes `governing load case '<lc>'` into its note. | `biject.evaluate`, `gate` |
+| **Every member is evaluated, every load case is evaluated.** `focus_member_ids` in a plan is advisory; with `evaluate_all_load_cases=True` (default) Biject takes each member's **worst** SF over all load-case *variants* and writes the governing variant into its note: `governing load case 'lc_x'` for the contract run, `governing load case 'lc_x' (plan-added self-weight variant)` for the run a plan added (`biject.governing_note`). | `biject.evaluate`, `gate` |
 | **Self-weight is additive only** (R8). `solve(..., include_self_weight=)` can switch it on for a case whose contract flag is off, never off. The gate always solves the planned case with the contract flag; a plan asking for self-weight adds a second variant and Biject takes the worst. Self-weight is lumped to the nodes (`ρ A L g / 2` per end). | `solver.effective_self_weight`, `gate._solve_after` |
+| **Variant keys** are the shared currency between Biject and the gate. `biject.variant_key(graph, result)` is the bare load case id when the result's `include_self_weight` equals the load case's contract flag, else `"<lc_id>+self_weight"` (`SELF_WEIGHT_VARIANT_SUFFIX`; the flag-on / weight-off case of a density-less material is still the contract run and keeps the bare id). `Verdict.governing_load_case_ids`, the `before=` dict and the gate's before-state notes are all keyed this way, so a plan-added variant never borrows the contract variant's `stress_before`. `is_self_weight_variant(key)` and `governing_note(key)` are the helpers. | `biject.variant_key`, `gate._solve_before` |
+| **Bad numerics are rejected, not solved.** `solver.check_finite(graph)` raises `SolverError` naming entity and field for a non-finite node coordinate, section `area` non-finite or ≤ 0, `iy/iz/j` non-finite or < 0, `elastic_modulus`/`yield_strength` non-finite or ≤ 0, `density` non-finite or < 0, or any non-finite point-load component in **any** load case (a NaN would otherwise solve to NaN forces that a capped safety factor reads as "safe"). Biject independently requires finite, positive `area`, `yield_strength` and `elastic_modulus` (`biject._require_positive_finite`) and raises `ValueError` if a safety factor is ever non-finite — `NaN < threshold` can never read as PASS. | `solver.check_finite`, `biject.member_capacity`, `biject.evaluate_member` |
+| **Duplicate load-case ids are an error.** The contract does not check this. `gate.check_unique_load_case_ids(graph)` raises `ValueError("duplicate load case ids [...]")` right after `graph.validate()` (→ ERROR decision); `solver._load_case` and `sanity._load_case` raise on a duplicate too, so no entry point silently analyses the first case and drops the rest. On a `before=` graph the same check is only a note (R11). | `gate`, `solver`, `sanity` |
 | **A FAIL outside `affected_member_ids` is surfaced**, never hidden: note `unsafe but not in graph.affected_member_ids -- the graph walker may have missed a dependency`. That is the dropped domino the project exists to catch. | `biject` |
 | **Crashes are ERROR decisions, never approvals or findings** (R10). `SolverError`/`ValueError` from validation, planning or solving become `Outcome.ERROR`, `error_message = "<Type>: <msg>"` (never empty), every member `NOT_EVALUATED` with `safety_factor None`, `violating_member_ids []`. Returned, not raised. | `gate.error_decision` |
-| **The before-state is isolated** (R11). `before=` is solved per load case in its own try/except; failures set `stress_before None` and add `before-state not analysed for '<lc>': <reason>` to `sanity_checks.note`. | `gate._solve_before` |
+| **A failed sanity check is an ERROR decision too — with the numbers kept.** When `equilibrium_ok` or `linearity_ok` on the planned case comes back `False`, `gate.sanity_failure(checks)` builds `error_message = "sanity check failed: equilibrium residual 1.230e+02 N exceeds tolerance; linearity deviation ..."` and the outcome becomes `Outcome.ERROR`, but Biject's `member_results`, `violating_member_ids` and the `sanity_checks` stay on the decision so a reviewer can see what the flagged solve said. A check that could not run (`None`) is only a note. **Consumers: `ERROR` no longer implies every member is `NOT_EVALUATED`** — test for the `sanity check failed:` prefix. | `gate.sanity_failure`, `gate.run_fast_gate` |
+| **The before-state is isolated** (R11). `before=` is solved once per **after variant** (same load case id, `include_self_weight=True` when the after variant had it, else `None`), each in its own try/except; failures set `stress_before None` and add `before-state not analysed for '<variant key>': <reason>` to `sanity_checks.note`. A before graph whose material has no density honestly yields a weightless result under the `+self_weight` key. | `gate._solve_before` |
 | Every returned `Decision` has passed `decision.validate()`. Timestamps are ISO-8601 UTC. `solver_version = importlib.metadata.version("PyNiteFEA")`. | `gate` |
 
 ## Modules
@@ -44,7 +48,10 @@ imports Stage 2, not the other way round).
 ### `solver.py` — PyNite adapter
 `solve(graph, load_case_id, *, load_scale=1.0, include_self_weight=None) -> SolveResult`
 (`member_forces`, `displacements`, `reactions`, all cast to `float`, tension
-positive). `build_model()` is pure construction. Truss modelling: bending
+positive). Order inside `solve()`: `assert_si` → `graph.validate()` →
+`check_finite` → empty-structure / finite `load_scale` → `check_stability` →
+`check_planar_loads` → `build_model` → PyNite. `build_model()` is pure
+construction and runs none of the checks. Truss modelling: bending
 released at both ends of every member, rotations restrained at every node,
 the constant coordinate axis (planar rule, R5 — one axis, z then y then x)
 restrained at every node, then the contract support (`PIN` = DX DY DZ,
@@ -52,15 +59,39 @@ restrained at every node, then the contract support (`PIN` = DX DY DZ,
 assume gravity along −Y. Zero `iy/iz/j` are floored at
 `SECTION_PROPERTY_FLOOR = 1e-12` (bending is released, so axial results are
 unaffected). `load_scale` is the load-combination factor (R3), so the
-linearity check deviates by exactly 0.0. `check_stability(graph)` rank-tests
-the translational truss stiffness with numpy **before** PyNite runs (R4) and
-raises `SolverError("structure is unstable: ...")`; PyNite failures are
-wrapped the same way, with "unstable" in the message when applicable.
+linearity check deviates by exactly 0.0.
+
+*Planar detection* (`planar_axis`) is relative: an axis is constant when its
+spread is ≤ `PLANAR_TOL = 1e-9` × the largest spread over all three axes
+(floor 1.0 m), so 1e-17 coordinate noise on a 10 m truss and a 1 km truss
+both classify correctly; `restrained_dofs`, `check_stability`,
+`check_planar_loads` and `build_model` all go through the same predicate.
+
+*Out-of-plane loads are unstable, not absorbed.* The planar-axis restraint is
+a modelling device; at a node whose **contract** support does not restrain
+that axis, a load along it would be taken by a fictitious reaction, every
+member would read zero and the structure would be approved. So
+`check_planar_loads(graph, load_case_id, include_self_weight=None)` raises
+`SolverError("structure is unstable: load '<id>' acts along <axis> (f<axis>=<v>), the out-of-plane axis of this planar truss, at unrestrained node '<node>'")`
+for any point-load component along the planar axis at such a node, and,
+when the planar axis is **y** and self-weight is effective, for the lumped
+weight (> 0) of any member whose end node is not restrained in DY
+(`... self-weight of member '<m>' ...`). Loads at `PIN`/`FIXED` (or a roller
+that restrains that axis) solve as before and appear as reactions.
+
+`check_stability(graph)` rank-tests the translational truss stiffness with
+numpy **before** PyNite runs (R4) and raises
+`SolverError("structure is unstable: ...")`; PyNite failures are wrapped the
+same way, with "unstable" in the message when applicable. A duplicated
+`load_case_id` is `SolverError("duplicate load case id 'lc_x' on graph 'g' (2 load cases carry it)")`
+from both `solve()` and `build_model()`.
 
 ### `sanity.py` — free correctness tests
 `equilibrium_check(graph, result)` re-derives ΣF = 0 at every node from the
 graph geometry, member forces, applied loads, reactions and lumped self-weight
-(tolerance `1e-6` × largest applied load, floor `1e-6` N).
+(tolerance `1e-6` × largest applied load, floor `1e-6` N); it raises
+`ValueError` for an unknown **or duplicated** `result.load_case_id` rather
+than balancing against the first case that matches.
 `linearity_check(graph, lc)` solves at scale 1 and 2 and demands every stress
 double (`1e-9` relative). `run_sanity_checks()` packages both as the
 contract's `SanityChecks`; a check that cannot run is `None` with the reason in
@@ -68,11 +99,23 @@ contract's `SanityChecks`; a check that cannot run is `None` with the reason in
 
 ### `biject.py` — the verification layer
 Pure code, no model input. `member_capacity()` (tension `Fy·A`; compression
-`min(Fy·A, π²EI_min/(KL)²)` when an inertia is provided, else `Fy·A` with
-the note `inertia not provided; buckling not checked`), `evaluate_member()`,
+`min(Fy·A, π²EI_min/(KL)²)` over the inertias that are **provided** (> 0):
+none → `Fy·A` with `INERTIA_NOT_PROVIDED_NOTE = "inertia not provided; buckling not checked"`;
+exactly one → buckling checked about that axis only, with
+`ONE_INERTIA_NOTE = "only one inertia provided; buckling checked about that axis only (upper bound on Pcr)"`
+prepended to the capacity note; both → `I_min = min(iy, iz)`).
+`area`, `yield_strength` and `elastic_modulus` must be finite and positive
+(`ValueError` otherwise, on the yield-only path too). `evaluate_member()`,
 `evaluate(graph, results, threshold, *, before=None) -> Verdict`
 (`outcome`, `member_results` in graph order, sorted `violating_member_ids`,
-`threshold`, `governing_load_case_ids`). `before` is `dict[lc_id, SolveResult]`.
+`threshold`, `governing_load_case_ids`). `before` is `dict[variant_key, SolveResult]`
+(see the variant-key convention above): a member's `stress_before` comes
+from the before result of **its governing variant**, else `None` with the
+note `no before-state for governing case '<key>'`. A result whose
+`load_case_id` is not in `graph.load_cases` is a `ValueError`. Public
+helpers: `variant_key`, `is_self_weight_variant`, `governing_note`,
+`SELF_WEIGHT_VARIANT_SUFFIX = "+self_weight"`,
+`SELF_WEIGHT_VARIANT_NOTE = "plan-added self-weight variant"`.
 There is **no parameter that can force APPROVED**.
 
 ### `orchestrator.py` — the planner
@@ -82,20 +125,27 @@ source)` — deliberately **no** threshold, capacity, status or outcome field.
 `LLMClient` with code-side validation (unknown load case / bad JSON /
 transport failure → fallback plan with `LLM plan rejected (<reason>); ...`
 in the rationale), `MetaModelClient.from_env()` (OpenAI-compatible chat
-completions: `META_MUSE_KEY`, `LLM_BASE_URL`, `LLM_MODEL`), `default_planner()`.
+completions: `META_MUSE_KEY`, `LLM_BASE_URL`, `LLM_MODEL`; the `api_key`
+field is `repr=False` so a logged client never prints it), `default_planner()`.
 The prompt shows only the structural outline — no forces, stresses,
-capacities or thresholds.
+capacities or thresholds. `parse_plan_json` rejects a reply longer than
+`MAX_LLM_RESPONSE_BYTES = 65536` UTF-8 bytes **before** parsing
+(`response too long (N bytes > 65536 max)` → fallback plan) and strips code
+fences with linear string handling, so a hostile reply cannot stall the gate.
 
 ### `gate.py` — Stage 2 entry point
 `run_fast_gate(graph, *, threshold=None, planner=None, before=None,
 evaluate_all_load_cases=True, decision_id=None) -> Decision`. Order:
-threshold (raises on misconfiguration) → SI + validate → plan → solve planned
-case (+ self-weight variant if the plan adds it, + every other load case) →
-before graph per load case (isolated) → sanity checks on the planned case →
-Biject → Decision → `validate()`. `planner=None` means `RuleBasedPlanner`;
+threshold (raises on misconfiguration) → SI + validate →
+`check_unique_load_case_ids` → plan → solve planned case (+ self-weight
+variant if the plan adds it, + every other load case) → before graph per
+**variant key** (isolated) → sanity checks on the planned case → Biject →
+`sanity_failure` (→ `Outcome.ERROR` with the numbers kept, see conventions)
+→ Decision → `validate()`. `planner=None` means `RuleBasedPlanner`;
 pass `default_planner()` explicitly for the LLM path. A planner that names an
 unknown load case or crashes is replaced by the rule plan with a note. `run_gate()`
-returns the `GateRun` (plan, raw `SolveResult`s, verdict) for scripts.
+returns the `GateRun` (plan, raw `SolveResult`s, `before_results` keyed by
+variant key, verdict) for scripts.
 `Decision.load_case_id` is the planned case; `sanity_checks` are for that case.
 
 ### `benchmark.py` — 10-bar truss validation and demo
@@ -110,7 +160,12 @@ See "Scoreboard interchange" below.
 status (FAIL `#d33`, PASS `#2a9d4a`, not evaluated `#888`), affected members
 thicker, the change target dashed, labels `m5 SF=0.81`, supports, load arrows
 for the decision's load case, legend and an outcome banner
-(`ESCALATED — 1 member below threshold 1`). Stdlib only; text is escaped.
+(`ESCALATED — 1 member below threshold 1`). Labels sit `LABEL_OFFSET = 10` px
+off their member; members whose canvas midpoints coincide (within
+`LABEL_COINCIDENT_PX = 1` px — the crossing diagonals m7/m8 and m9/m10) get
+their labels at 30 % / 70 % along their own member instead of the shared
+midpoint (`_label_positions`), so no label is drawn on top of another.
+Stdlib only; text is escaped.
 
 ## The benchmark (`benchmark.py`)
 
@@ -221,12 +276,42 @@ dropped_by_scenario` plus `recall`/`precision`; `Scoreboard.scores` is a
 | script | what | exit |
 |---|---|---|
 | `python3 scripts/validate_solver.py` | prints the benchmark table and the regression pin | 0 pass / 1 fail |
-| `python3 scripts/run_fast_gate.py --no-llm --out decision.json --svg truss.svg` | runs the gate on the m7 demo change with the optimum as before-state; `--graph g.json [--before b.json]` for any graph, `--threshold`, `--planned-only`, `--decision-id`; without `--no-llm` the LLM planner is used when `META_MUSE_KEY` is set | 0 APPROVED / 2 ESCALATED / 1 ERROR or bad threshold |
+| `python3 scripts/run_fast_gate.py --no-llm --out decision.json --svg truss.svg` | runs the gate on the m7 demo change with the optimum as before-state; `--graph g.json [--before b.json]` for any graph (decoded only — a graph that fails `validate()` still yields an ERROR decision in `--out`; a malformed `--before` is a note), `--threshold`, `--planned-only`, `--decision-id`; without `--no-llm` the LLM planner is used when `META_MUSE_KEY` is set. If the graph is too malformed to draw, `svg not written: ...` goes to stderr and the JSON + exit code are unaffected | 0 APPROVED / 2 ESCALATED / 1 ERROR or bad threshold |
 | `python3 scripts/skyciv_smoke.py` | LIVE Stage 3 smoke test (see `earl/artifacts/README.md`) | 0 / 2 no creds / 1 |
 
 All offline; the gate script only reaches the network for the LLM plan, never
 for the verdict. Tests: `python3 -m unittest discover -s tests -v` — every
 Track B test passes `threshold=1.0` explicitly and never reads `.env`.
+
+## Integration notes from Track A's graph builder
+
+Verified by a probe that fed `earl.ingestion.benchmark.benchmark_spec()`'s
+graph straight into `run_fast_gate` (no code change needed on the gate side):
+
+* **Same material id, different yield.** Track A's `benchmark_spec()` sets
+  `mat_al.yield_strength` to the **25 ksi allowable** (`ALLOWABLE_STRESS`,
+  1.724e8 Pa). Track B's `benchmark.py` uses the **50 ksi nominal 2024-T3
+  yield** (3.447e8 Pa) under the same id `mat_al`. Safety factors for the same
+  geometry therefore differ by exactly 2× between the two builders; compare
+  outcomes, not numbers, across tracks.
+* **One area for every bar.** Track A drives all ten members from a single
+  Onshape variable `barArea` (default 1 in²). At 1 in² and 25 ksi **every
+  member fails** (m3 at ≈ 205 ksi); a uniform area of **≥ 8.19 in²** is needed
+  for the whole truss to pass at 25 ksi. Track B's optimum has per-member
+  areas (`sec_<mid>`), which is why its demo change fails exactly one member.
+* **Load case id is `lc_1`** in Track A (`LOAD_CASE_ID`), `lc_benchmark` in
+  Track B's `benchmark.py`; the gate plans over whatever ids the graph carries,
+  so neither needs renaming.
+* **Track A's walker marks all 10 members affected** for the `barArea`
+  edit that is Track A's primary change signal: `walker.walk` reaches every
+  member at distance 1 over `VARIABLE_REF` edges (`walk_and_apply` writes
+  them into `affected_member_ids`; `build_graph` alone leaves the list
+  empty). So the `unsafe but not in graph.affected_member_ids` dropped-domino
+  note can only fire on Track A graphs for a narrower change (the selfcheck's
+  own change reaches 5 of 10).
+* The gate accepted Track A's graph as-is: SI units, unique load-case ids,
+  finite numerics and an XY-planar truss with in-plane loads all pass the
+  checks above without adjustment.
 
 ## Proposed contract amendments for Track A (R18 — proposals only, NOT implemented)
 

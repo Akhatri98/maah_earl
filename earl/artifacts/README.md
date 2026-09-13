@@ -35,7 +35,7 @@ Specifically unverified:
 | function names | `S3D.session.start`, `S3D.model.set`, `S3D.model.solve`, `S3D.results.getReport` (fallback `S3D.results.getAnalysisReport`), `S3D.design.member.getInput`, `S3D.design.member.check` | `FN_*` |
 | design-check argument name | `design_input` (the getInput data passed back; there is no `$previous` placeholder) | `analyze()` |
 | where the session id lives | top-level `session_id` or `last_session_id`, else the session.start entry's data | `_session_id()` |
-| where the report link lives | first value whose key contains `download`/`link`/`url` | `parse_report_link()` |
+| where the report link lives | first **http(s)** string whose key contains `download`, then `link`, then `url` — priority order across all keys of a dict before recursing; a hinted key whose value is not a URL (`url_expiry: "24h"`, a relative `file_url`) is skipped | `parse_report_link()`, `_is_http_url()` |
 | whether the response echoes function names | assumed `functions: [{function, status, msg, data}]`; falls back to positional matching | `_find_function()` |
 | axial force sign | **assumed tension-positive**; `parse_member_results(..., sign_hint=-1.0)` flips it | `parse_member_results()` |
 | solve data shape | dict keyed by combination → `member_forces`/`member_stresses` → member → `axial` (number, list, `[position, value]` pairs or dict); a list of combination objects and a single object are also accepted | `_combination_objects()`, `_reduce_axial()` |
@@ -68,9 +68,16 @@ session id was found: `design.member.check {design_code, design_input}` with
 `auth.session_id`. Without a session id the check is skipped with a warning.
 
 `call()` raises `SkyCivError` for HTTP ≠ 200, a non-JSON body or a transport
-failure; per-function status is checked by `analyze()`. Every call is logged
-(`client.log`, `client.request_count`) — SkyCiv calls are metered.
-`transport` and `downloader` are injectable, so tests never touch the network.
+failure; per-function status is checked by `analyze()`. `SkyCivError` carries
+`status`, `function` and `body` (the full response text for HTTP/non-JSON
+failures; the message itself quotes only a prefix). Every call is logged
+(`client.log`, `client.request_count`) — SkyCiv calls are metered. With
+`record_dir` set, a successful call is recorded as `<label>.json` and a failed
+one as `<label>_error.json` (label, functions, error type, message, status,
+function, body); a failure to write the record never masks the original
+error. `SkyCivClient.config` is `repr=False`, so a logged client never prints
+the username or key. `transport` and `downloader` are injectable, so tests
+never touch the network.
 
 `SkyCivRun`: `session_id, member_results {id: SkyCivMemberResult(axial_force N,
 stress Pa)}, report_url, design_results {id: SkyCivDesignResult(ratio, passed)},
@@ -110,8 +117,14 @@ the ~0.02 % difference.)
 `escalate(graph, decision, client, *, report_dir=None, always=False,
 design_code=DEFAULT_DESIGN_CODE) -> Decision`
 
+* Raises `ValueError("decision '<id>' is for graph '<g1>', not '<g2>'")` when
+  `decision.graph_id != graph.id` — checked right after `decision.validate()`,
+  **before** the early returns below and before any metered call, because a
+  mispaired graph is a caller bug whatever the outcome.
 * Returns the (validated) input **untouched** for `Outcome.ERROR` regardless
-  of `always`, and for `APPROVED` unless `always=True`.
+  of `always`, and for `APPROVED` unless `always=True`. Note that since the
+  gate's sanity-failure change an `ERROR` decision can carry Biject numbers;
+  escalation still does not analyse it.
 * Otherwise works on a copy (`Decision.from_dict(decision.to_dict())`), runs
   `client.analyze(graph, decision.load_case_id)` and attaches
   `SkyCivReport(report_id=f"skyciv-{decision.id}", url, local_path
@@ -150,14 +163,25 @@ python3 scripts/skyciv_smoke.py --no-design     # skip call 2
 ```
 
 Needs `SKYCIV_API_USERNAME` / `SKYCIV_API_KEY` in the environment or `.env`;
-without them it exits 2 **without any network call**. It records the raw
-responses to `tests/fixtures/skyciv/recorded/`, retries the report with
-`FN_REPORT_ALT` if `FN_REPORT` fails (one extra call), prints the raw shape
-of the solve data, SkyCiv's axial forces next to PyNite's (with a verdict on
-the sign convention), warnings, report link and design ratios. Costs 1–3
-metered calls; never run by the tests. Optional `SKYCIV_REPORT_DIR`
-(`.env.example`) is where escalation and the smoke script save report PDFs.
+without them it exits 2 **without any network call**. `load_env()` runs
+**before** the argument parser is built, and `--report-dir` defaults to
+`None` and is resolved to `SKYCIV_REPORT_DIR` after parsing, so a value set
+only in `.env` is honoured while an explicit flag still wins. It records the
+raw responses (and any `<label>_error.json`) to
+`tests/fixtures/skyciv/recorded/`, retries the report with `FN_REPORT_ALT` if
+`FN_REPORT` fails (one extra call: `retry_report_alt(..., session_open=)`
+reuses call 1's session only when call 1 asked for `keep_open` — i.e. a
+design code was requested — *and* a session id came back; otherwise it sends
+a fresh `session.start` + `model.set` + `model.solve` + report in one call),
+prints the raw shape of the solve data, SkyCiv's axial forces next to
+PyNite's (with a verdict on the sign convention), warnings, report link and
+design ratios. Costs 1–3 metered calls; never run by the tests. Optional
+`SKYCIV_REPORT_DIR` (`.env.example`) is where escalation and the smoke script
+save report PDFs.
 
 Fixtures: `tests/fixtures/skyciv/synthetic/` are hand-built to the assumed
 shape (each carries a `_comment` saying so); once recordings exist, prefer
-them and correct the constants block for anything that differs.
+them and correct the constants block for anything that differs. JSON member
+keys are always strings (`"1"`); `parse_member_results()` also accepts
+integer keys from a live dict, which `tests/test_skyciv.py` pins in code
+rather than in a fixture.

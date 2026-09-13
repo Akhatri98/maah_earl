@@ -117,7 +117,9 @@ MPA_TO_PA = 1e6
 
 class SkyCivError(RuntimeError):
     """A SkyCiv call failed. `status` is the HTTP or function status when
-    known; `function` names the API function that failed, if any."""
+    known; `function` names the API function that failed, if any; `body` is
+    the raw HTTP response text for an HTTP-level failure (the message only
+    carries a prefix of it), so the record file keeps the whole thing."""
 
     def __init__(
         self,
@@ -125,10 +127,12 @@ class SkyCivError(RuntimeError):
         *,
         status: int | None = None,
         function: str | None = None,
+        body: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.function = function
+        self.body = body
 
 
 # ---------------------------------------------------------------------------
@@ -444,15 +448,28 @@ def parse_member_results(
 _LINK_HINTS = ("download", "link", "url")
 
 
+def _is_http_url(value: Any) -> bool:
+    return isinstance(value, str) and value.startswith(("http://", "https://"))
+
+
 def parse_report_link(data: Any) -> str | None:
-    """First string value whose key contains download / link / url, searched
-    depth-first; a bare http(s) string is accepted as-is."""
+    """First http(s) string whose key contains download / link / url, searched
+    depth-first; a bare http(s) string is accepted as-is.
+
+    Within one dict the hints are tried in priority order (download, then
+    link, then url) across *all* keys before recursing, and a matching key
+    whose value is not an http(s) URL is skipped rather than returned. Both
+    rules exist because SkyCiv's response shape is unverified: a decoy key
+    such as `url_expiry: "24h"` or `link_type: "pdf"` sitting before the real
+    `download_link` must not shadow it.
+    """
     if isinstance(data, str):
-        return data if data.startswith(("http://", "https://")) else None
+        return data if _is_http_url(data) else None
     if isinstance(data, dict):
-        for key, value in data.items():
-            if isinstance(value, str) and any(h in str(key).lower() for h in _LINK_HINTS):
-                return value
+        for hint in _LINK_HINTS:
+            for key, value in data.items():
+                if hint in str(key).lower() and _is_http_url(value):
+                    return value
         for value in data.values():
             found = parse_report_link(value) if isinstance(value, (dict, list)) else None
             if found:
@@ -618,7 +635,9 @@ class SkyCivClient:
     with `record_dir`, saved raw -- SkyCiv calls are metered.
     """
 
-    config: SkyCivConfig
+    # repr=False: the config carries the API key, and a dataclass repr lands
+    # in tracebacks, logs and test failure output.
+    config: SkyCivConfig = field(repr=False)
     record_dir: Path | None = None
     timeout: int = 180
     transport: Callable[[dict[str, Any]], dict[str, Any]] | None = None
@@ -645,12 +664,15 @@ class SkyCivClient:
             raise SkyCivError(
                 f"HTTP {resp.status_code} for {url}: {resp.text[:500]}",
                 status=resp.status_code,
+                body=resp.text,
             )
         try:
             data = resp.json()
         except ValueError as e:
             raise SkyCivError(
-                f"non-JSON body from {url}: {resp.text[:200]!r}", status=resp.status_code
+                f"non-JSON body from {url}: {resp.text[:200]!r}",
+                status=resp.status_code,
+                body=resp.text,
             ) from e
         if not isinstance(data, dict):
             raise SkyCivError(
@@ -683,11 +705,13 @@ class SkyCivClient:
         names = [str(f.get("function")) for f in functions]
         try:
             data = (self.transport or self._post)(payload)
-        except SkyCivError:
+        except SkyCivError as e:
             self.log.append(RequestRecord(label, names, -1, 0))
+            self._record_error(label, names, e)
             raise
         except requests.RequestException as e:
             self.log.append(RequestRecord(label, names, -1, 0))
+            self._record_error(label, names, e)
             raise SkyCivError(f"transport failure for {label}: {e}") from e
         if not isinstance(data, dict):
             raise SkyCivError(f"transport returned {type(data).__name__}, expected dict")
@@ -703,6 +727,32 @@ class SkyCivClient:
         (self.record_dir / f"{label}.json").write_text(
             json.dumps(data, indent=2, default=str), encoding="utf-8"
         )
+
+    def _record_error(self, label: str, names: list[str], exc: BaseException) -> None:
+        """Record a failed call as `<label>_error.json` when recording.
+
+        A metered call that failed is still a call worth keeping: the smoke
+        test's whole purpose is to see what the live API says, and an HTTP
+        error body (the first 500 chars are in the SkyCivError message) is
+        often the only clue as to which function name or unit string is
+        wrong. Recording must never mask the original failure, so an
+        unwritable record_dir is ignored here.
+        """
+        if not self.record_dir:
+            return
+        record = {
+            "label": label,
+            "functions": names,
+            "error": type(exc).__name__,
+            "message": str(exc),
+            "status": getattr(exc, "status", None),
+            "function": getattr(exc, "function", None),
+            "body": getattr(exc, "body", None),
+        }
+        try:
+            self._record(f"{label}_error", record)
+        except OSError:
+            pass
 
     # -- the analysis flow -------------------------------------------------
 
