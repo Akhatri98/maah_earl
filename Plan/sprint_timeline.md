@@ -68,8 +68,38 @@ and still hold. Full write-up, including the three axes on which a real gap
 might still exist, in `earl/eval/README.md`. **This needs a decision before
 Sprint 6 fixes the demo narrative in place.**
 
-### Sprint 6 — Demo polish & dry run (both)
+### Sprint 6 — Demo polish & dry run (both) — done
 Run the full demo flow end to end, tighten the escalation example, rehearse the close on the scoreboard number.
+
+`scripts/demo.py` runs the whole thing in six acts from one command, offline,
+in about four minutes (`--pause` between acts, `--act N` for one). It reads the
+recorded Sprint 5A run from `demo/recordings/`, which is committed precisely
+because `artifacts/` is gitignored and the demo must survive a clean clone, a
+rotated key or no network.
+
+**The narrative changed, because the measurement did.** plan.md's flow opened
+on a baseline LLM missing a domino. We measured both halves of that claim —
+20 scenarios, then 3 repeats each — and the baseline missed nothing (22/22)
+and never wavered (60/60). So the demo no longer claims a gap that is not
+there. Act 4 is the new centre: a `Decision` with m5 at SF 0.735 flipped to
+APPROVED goes into `validate()` and comes out a `ValueError`, on stage. The
+close is *"we spent a sprint trying to prove a model would miss something;
+over 60 runs it did not — it is still not the thing that decides whether the
+change ships."*
+
+**Two things the dry run caught that the test suite could not:**
+
+- **SkyCiv had never worked live.** Every truss graph was rejected with 110
+  validation errors (`sections[N]/Iy should be > 0`) because a truss section
+  carries area only. Fixed in `skyciv_client.section_inertias()`. The model
+  now validates and reaches the solver — where it stops on the free tier's
+  **5-member cap** (the truss has 10). That is a purchasing decision, not a
+  bug; the ECN and Act 6 both say so rather than citing a report nobody can
+  open.
+- **Gmail credentials are empty**, so `--send` raises. The demo uses the
+  outbox `.eml`, which is byte-for-byte what Gmail would receive.
+
+760 tests pass.
 
 ## Diagram
 

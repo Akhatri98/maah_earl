@@ -248,11 +248,20 @@ def _consistency_lines() -> None:
             print("  " + line)
 
 
-def act6_recap(status: str) -> None:
+def act6_recap(status: str, result) -> None:
     _title(6, "One line each")
     print("  Ingestion      Onshape -> dependency graph, evaluated on a branch")
     print("  Fast gate      PyNite solves, Biject applies the threshold IN CODE")
-    print("  Trusted report SkyCiv, independently, when something is escalated")
+    if result.decision.skyciv_report is not None:
+        print("  Trusted report SkyCiv, independently, when something is escalated")
+    else:
+        # Never claim a stage that did not run. SkyCiv's free tier caps a
+        # model at five members and the demo truss has ten, so Stage 3 stops
+        # at an account limit rather than a payload error -- the ECN in Act 3
+        # says so too, rather than leaving the citation blank.
+        print("  Trusted report SkyCiv -- NOT RUN here: the free tier caps a model")
+        print("                 at 5 members and this truss has 10. The ECN says so")
+        print("                 rather than citing evidence nobody can open.")
     print("  Sharing        an ECN that cites it, in the engineer's inbox")
     print()
     print(RULE)
@@ -312,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         elif act == 5:
             act5_the_numbers()
         elif act == 6:
-            act6_recap(status)
+            act6_recap(status, result)
         if act != acts[-1]:
             _wait(args.pause)
 
