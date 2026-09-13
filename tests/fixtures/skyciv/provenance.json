@@ -1,0 +1,13 @@
+{
+  "kind": "recorded_public_example",
+  "source_url": "https://skyciv.com/media/docs/SkyCiv-Example-Report.pdf",
+  "retrieved_at": "2026-09-13",
+  "http_status": 200,
+  "file": "published-example.pdf",
+  "sha256": "13c52ff0b85529553ac6784c26bca241ee42657ae1fb2d380be5073a1d173d4f",
+  "report_title": "Engine-Crane-Report-Example",
+  "report_date": "2016-08-10",
+  "software": "SkyCiv Structural 3D v1.2.5",
+  "model_match": false,
+  "note": "Real, publicly published SkyCiv example report; not an API solve of the EARL truss. No SkyCiv credentials were available during the build. This sample demonstrates the artifact format only. Independent numerical cross-check is NOT performed when this fixture is used."
+}

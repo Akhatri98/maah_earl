@@ -38,3 +38,14 @@ def to_si(value: float, unit: str) -> float:
     if normalized not in factors or not isfinite(value):
         raise ValueError(f"unsupported unit or nonfinite value: {unit!r}")
     return value * factors[normalized]
+
+
+def from_si(value: float, unit: str) -> float:
+    """Convert at an external API/presentation boundary, never inside a solve."""
+    return value / to_si(1.0, unit)
+
+
+def inertia_mm4(value: float) -> float:
+    if not isfinite(value) or value < 0:
+        raise ValueError("inertia must be nonnegative and finite")
+    return value / 0.001**4

@@ -235,6 +235,11 @@ class ChangeEvent(Serializable):
                 load.node_id = self.node_after
             elif self.field_name in ("fx", "fy"):
                 setattr(load, self.field_name, checked(getattr(load, self.field_name)))
+                if self.node_after is not None:
+                    if load.node_id != self.node_before:
+                        raise ValueError("stale load location")
+                    result.node(self.node_after)
+                    load.node_id = self.node_after
             else:
                 raise ValueError("unsupported load delta")
         elif self.target_kind is TargetKind.VARIABLE:

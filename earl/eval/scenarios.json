@@ -1,0 +1,26 @@
+{
+  "protocol_version": "1.0",
+  "frozen_before_evaluation": true,
+  "scenarios": [
+    {"id":"reinforce-chord","name":"Reinforce m1: 22 in^2","kind":"area","member":"m1","area_in2":22},
+    {"id":"thin-compression","name":"Thin m8: 8 in^2","kind":"area","member":"m8","area_in2":8},
+    {"id":"design-margin","name":"Reduce m8: 16 in^2","kind":"area","member":"m8","area_in2":16},
+    {"id":"thin-bottom-chord","name":"Thin m3: 5 in^2","kind":"area","member":"m3","area_in2":5},
+    {"id":"thin-diagonal","name":"Thin m10: 4 in^2","kind":"area","member":"m10","area_in2":4},
+    {"id":"remove-m1","name":"Remove top chord m1","kind":"remove","member":"m1"},
+    {"id":"remove-m3","name":"Remove bottom chord m3","kind":"remove","member":"m3"},
+    {"id":"remove-m5","name":"Remove vertical m5","kind":"remove","member":"m5"},
+    {"id":"remove-m7","name":"Remove diagonal m7","kind":"remove","member":"m7"},
+    {"id":"remove-m8","name":"Remove compression diagonal m8","kind":"remove","member":"m8"},
+    {"id":"add-load-n1-20","name":"Add 20 kN at n1","kind":"add_load","node":"n1","load_kn":20},
+    {"id":"add-load-n1-100","name":"Add 100 kN at n1","kind":"add_load","node":"n1","load_kn":100},
+    {"id":"add-load-n2-80","name":"Add 80 kN at n2","kind":"add_load","node":"n2","load_kn":80},
+    {"id":"add-load-n3-120","name":"Add 120 kN at n3","kind":"add_load","node":"n3","load_kn":120},
+    {"id":"add-load-n4-50","name":"Add 50 kN at n4","kind":"add_load","node":"n4","load_kn":50},
+    {"id":"move-p1-n1","name":"Move p1: n2 to n1","kind":"move_load","load":"p1","node":"n1"},
+    {"id":"move-p2-n1","name":"Move p2: n4 to n1","kind":"move_load","load":"p2","node":"n1"},
+    {"id":"move-p1-n3","name":"Move p1: n2 to n3","kind":"move_load","load":"p1","node":"n3"},
+    {"id":"move-p2-n2","name":"Move p2: n4 to n2","kind":"move_load","load":"p2","node":"n2"},
+    {"id":"move-p2-n3","name":"Move p2: n4 to n3","kind":"move_load","load":"p2","node":"n3"}
+  ]
+}

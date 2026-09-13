@@ -1,0 +1,6 @@
+{
+  "provenance": "Hand-authored deterministic fallback templates, not a recorded LLM run.",
+  "narrative": "Requested engineering edit: {change}",
+  "load_case_policy": "Use the typed load change's case, or the first available case.",
+  "example_edits": ["resize m8 to 8 in2", "remove m8", "add 80 kN at n1", "move p2 to n2"]
+}

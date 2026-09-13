@@ -26,8 +26,10 @@ or write capability is implemented.
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m unittest discover -s tests -q
+python -m earl run --scenario thin-compression
 ```
 
-The offline demo, validation details, and live URL will be documented here as
-the working checkpoints complete. See [RELIABILITY.md](RELIABILITY.md).
+An escalation exits with code 2 and writes real ECN, email, Decision, and trace
+files under `out/`; it does not send mail. `reinforce-chord` exercises approval.
+Run `python -m unittest discover -s tests -q` for the offline test suite.
+See [RELIABILITY.md](RELIABILITY.md) for the benchmark and fixture limitations.

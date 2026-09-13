@@ -164,9 +164,12 @@ used solely for PyNite end-release algebra never becomes a capacity.
 
 ## Verification Status
 
-The numerical and gate checkpoint passes 81 offline tests, including the original
-50. Eval counts, integration provenance, and deployment verification will be
-filled in after measurement.
+The end-to-end pipeline checkpoint passes 96 offline tests, including the
+original 50. With networking disabled, `thin-compression` resizes m8 from
+20 to 8 in^2, produces SF `0.478`, escalates, and writes an ECN, MIME email,
+Decision JSON, report reference, and nine-stage JSONL trace. `reinforce-chord`
+approves. A mocked solver crash produces a held `ERROR` with a saved email.
+Eval counts and deployment verification will be filled in after measurement.
 
 ## External-Service Reality
 
@@ -174,5 +177,28 @@ The checked-in `tests/fixtures/onshape/` responses are actual recordings of an
 empty document. `tests/fixtures/synthetic/` is hand-authored test/demo data.
 No SkyCiv, Gmail, or LLM credential is assumed. A fixture or locally generated
 artifact must never be presented as a real SkyCiv solve or a sent message.
+
+The committed SkyCiv fixture is the actual [public example PDF](https://skyciv.com/media/docs/SkyCiv-Example-Report.pdf)
+retrieved by HTTP 200 on 2026-09-13, with its SHA-256 in
+`tests/fixtures/skyciv/provenance.json`. It is the 2016 engine-crane sample,
+**not the EARL truss**. No authenticated SkyCiv analysis response could be
+recorded without credentials. The offline ECN cites this sample's format and
+explicitly says the independent cross-check was NOT PERFORMED. This is a
+remaining live-integration limitation, not a fabricated successful check.
+An optional live adapter submits the exact model, retrieves a report reference
+and governing axial demand magnitude, records the raw response, and reuses it
+only for an exact model/member fingerprint. Disagreement is returned to Biject
+and forces escalation. Report download failure cannot discard a disagreement.
+
+Public requests always disable live calls independently of environment flags.
+Trusted CLI calls additionally need `--live`, `DEMO_MODE=false`, and the
+corresponding credentials. Local output persistence is application code, not
+a model capability. The model sees structured data and no executable tools,
+file handles, Onshape client, or delivery callable. The capability test checks
+the strict three-operation surface and absence of action tools. The gate
+enforces the EARL acceptance state, not a real Onshape branch permission.
+
+Semantic outputs (model, forces, comparisons) are deterministic. Run IDs,
+audit timestamps, and measured durations intentionally vary between runs.
 
 Reference for the overlap: [Onshape Simulation](https://www.onshape.com/en/features/simulation).
