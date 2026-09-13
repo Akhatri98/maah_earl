@@ -29,7 +29,11 @@ the **Autonomous agent** ledger updates by itself. Repeat the same edit to see
 `SUPPRESSED`, then use `reinforce-chord` to produce a `CLEARED` notice.
 The local file is a synthetic CAD-edit trigger, not a live Onshape integration.
 Stop cleanly with Ctrl-C; `out/agent/state.json` preserves runs and dedup state.
-Phase 1 records local notices only; live triggers and delivery are separate phases.
+Phase 1 is independently demoable from commit `f3d8fea`. The live trigger
+adapter is documentation-verified and budget-guarded, but no authenticated
+Onshape callback or populated live geometry was available to verify.
+See [Onshape setup](docs/ONSHAPE_SETUP.md) for the exact model convention,
+webhook configuration, and conservative polling limits.
 
 Open the live demo, choose **Thin m8: 8 in^2**, and click **Run structural
 check**. The member becomes thinner, the pipeline streams its work, and Biject

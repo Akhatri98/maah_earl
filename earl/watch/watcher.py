@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import signal
 import threading
 import time
@@ -14,6 +15,7 @@ import fcntl
 
 from .runner import ChangeSource, Runner
 from .state import Ledger, atomic_json, utcnow
+from earl.config import demo_mode, load_env
 
 LOG = logging.getLogger(__name__)
 
@@ -102,12 +104,86 @@ class Watcher:
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
 
+class FallbackTrigger:
+    """A failed live trigger gets a durable ERROR; subsequent offline edits still run."""
+
+    def __init__(self, primary, fixture):
+        self.primary, self.fixture = primary, fixture
+        self.mode = primary.mode
+        self.retry_at = 0
+        self.last_live = False
+
+    def next_change(self):
+        if time.time() >= self.retry_at:
+            try:
+                source, cursor = self.primary.next_change()
+                self.last_live = True
+                return source, cursor
+            except Exception as exc:
+                self.retry_at = time.time() + 3600
+                self.last_live = False
+                return ChangeSource(source_id=self.primary.source_id, mode=self.primary.mode,
+                                    scenario="live trigger unavailable", provenance="live trigger failed; fixture fallback enabled",
+                                    error=f"{type(exc).__name__}: {str(exc)[:300]}"), None
+        self.last_live = False
+        source, cursor = self.fixture.next_change()
+        if source:
+            source.provenance = "synthetic fixture fallback; live trigger unavailable"
+        return source, cursor
+
+    def acknowledge(self, cursor):
+        if self.last_live:
+            self.primary.acknowledge(cursor)
+        elif cursor is not None:
+            self.fixture.acknowledge(cursor)
+
+
 def run_watch(*, mode: str, interval: float | None = None, fixture_file: Path | None = None,
-              allow_live: bool = False, ticks: int | None = None) -> None:
+              allow_live: bool = False, ticks: int | None = None, register_url: str | None = None,
+              unregister_id: str | None = None, list_hooks: bool = False) -> None:
     ledger = Ledger()
-    # Until a live trigger is explicitly enabled, every mode uses the same
-    # safe fixture path. Web visitors have no route to call this function.
-    if mode != "fixture":
-        LOG.warning("%s trigger unavailable; using the offline fixture trigger", mode)
+    load_env()
     trigger = FixtureTrigger(fixture_file or ledger.path.parent / "change.json", ledger)
+    required = ("ONSHAPE_ACCESS_KEY", "ONSHAPE_SECRET_KEY", "ONSHAPE_DOCUMENT_ID", "ONSHAPE_WORKSPACE_ID")
+    if mode != "fixture" and allow_live and not demo_mode() and all(os.environ.get(k) for k in required):
+        from earl.ingestion.onshape_client import OnshapeClient
+        from .onshape import PollTrigger, WebhookTrigger, DEFAULT_POLL_INTERVAL, MIN_POLL_INTERVAL
+        from .webhooks import register
+        client = OnshapeClient.from_env()
+        client.ledger, client.timeout = ledger, 4
+        if register_url:
+            try:
+                print(json.dumps(register(client, ledger, register_url)), flush=True)
+            except Exception as exc:
+                LOG.warning("Webhook registration unconfirmed (%s); running fixture fallback", type(exc).__name__)
+                Watcher(trigger, Runner(ledger, allow_live=False), interval=2.0).run(ticks=ticks)
+                return
+        if list_hooks:
+            try:
+                info = client.list_webhooks()
+                print(json.dumps({"webhooks": [{"id": h.get("id"), "name": h.get("name"), "isTransient": h.get("isTransient")}
+                                                for h in info.get("items", [])]}), flush=True)
+            except Exception as exc:
+                print(f"Webhook list unavailable ({type(exc).__name__}); local ledger retained.", flush=True)
+            return
+        if unregister_id:
+            with ledger.edit() as state:
+                state["webhooks"].setdefault(unregister_id, {})["desired"] = False
+            try:
+                client.unregister_webhook(unregister_id)
+                print("Webhook unregistered.", flush=True)
+            except Exception as exc:
+                print(f"Remote unregister unconfirmed ({type(exc).__name__}); automatic renewal disabled locally.", flush=True)
+            return
+        if mode == "poll":
+            interval = max(MIN_POLL_INTERVAL, interval if interval is not None else DEFAULT_POLL_INTERVAL)
+            primary = PollTrigger(client, ledger, interval=interval)
+        else:
+            primary = WebhookTrigger(client, ledger)
+        trigger = FallbackTrigger(primary, trigger)
+    elif mode != "fixture":
+        LOG.warning("Live %s disabled or credentials absent; using the offline fixture trigger", mode)
+        if list_hooks or unregister_id:
+            print("No webhook administration performed; live access is disabled.", flush=True)
+            return
     Watcher(trigger, Runner(ledger, allow_live=allow_live), interval=interval or 2.0).run(ticks=ticks)

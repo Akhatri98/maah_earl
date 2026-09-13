@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from dataclasses import replace
 from math import isfinite
 from pathlib import Path
 from typing import Any
@@ -56,7 +58,7 @@ def map_assembly(
         spec = mapping["variables"][name]
         if row.type != spec["type"] or row.value is None or not isfinite(row.value):
             raise ValueError(f"invalid type or SI value for {name}")
-        if row.value <= 0:
+        if row.value < 0 or (row.value == 0 and name != "pointLoad"):
             raise ValueError(f"{name} must be positive")
         if name in ("bayWidth", "bayHeight"):
             for node in graph.nodes:
@@ -80,7 +82,12 @@ def map_assembly(
     ids = {}
     parts = {}
     for instance in instances:
-        mid = mapping["instance_members"].get(instance.name)
+        name = instance.name.strip()
+        mid = mapping["instance_members"].get(name)
+        if mid is None:
+            # Onshape adds occurrence suffixes; tolerate only the declared member convention.
+            match = re.fullmatch(r"Member[ _](m(?:10|[1-9]))(?:\s*<\d+>)?", name, re.IGNORECASE)
+            mid = match.group(1).lower() if match else None
         if mid is None:
             warning = f"Unmapped instance {instance.name!r}; outside the declared truss map"
             LOG.warning(warning)
@@ -99,6 +106,16 @@ def map_assembly(
         raise ValueError("assembly has no mapped truss members")
     for member in graph.members:
         member.onshape_id = parts[member.id]
+        area_name = mapping.get("member_area_variables", {}).get(member.id)
+        if area_name and area_name in rows:
+            row = rows[area_name]
+            if row.type != "AREA" or row.value is None or not isfinite(row.value) or row.value <= 0:
+                raise ValueError(f"invalid AREA value for {area_name}")
+            inertia = round_inertia(row.value)
+            section = replace(graph.section(member.section_id), id=f"section_{member.id}",
+                              area=row.value, iy=inertia, iz=inertia, j=2 * inertia)
+            graph.sections.append(section)
+            member.section_id = section.id
     raw_edges = mate_edges(parse_mates(assembly)) + where_used_edges(instances)
     graph.edges = resolve_edges(raw_edges, ids)
     for a in graph.members:

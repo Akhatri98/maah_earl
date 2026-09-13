@@ -29,8 +29,14 @@ class ChangeSource:
     change: ChangeEvent | None = None
     provenance: str = "synthetic fixture trigger"
     recipient: str | None = None
+    error: str | None = None
 
     def fingerprint(self) -> str:
+        if self.graph is not None and self.change is not None:
+            from .changes import physical_model
+            value = {"source_id": self.source_id, "before": physical_model(self.graph),
+                     "after": physical_model(self.change.apply(self.graph))}
+            return hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
         graph = self.graph.to_dict() if self.graph else None
         if graph:
             graph = {key: graph[key] for key in ("nodes", "members", "sections", "materials", "load_cases",
@@ -75,6 +81,8 @@ class Runner:
         fingerprint, run_id = source.fingerprint(), uuid.uuid4().hex
         result = None
         try:
+            if source.error:
+                raise ValueError(source.error)
             stream = run_pipeline(scenario=source.scenario, param=source.param, graph=source.graph,
                                   change=source.change, allow_live=False, out_root=self.out_root, run_id=run_id)
             while True:

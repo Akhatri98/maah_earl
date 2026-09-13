@@ -16,6 +16,10 @@
     "pointLoad": {"field": "fy", "type": "FORCE"}
   },
   "section_shape": "solid_round",
+  "member_area_variables": {
+    "m1": "area_m1", "m2": "area_m2", "m3": "area_m3", "m4": "area_m4", "m5": "area_m5",
+    "m6": "area_m6", "m7": "area_m7", "m8": "area_m8", "m9": "area_m9", "m10": "area_m10"
+  },
   "effective_length_factor": 1.0,
   "note": "Topology and restraints come only from the canonical builder. Coordinates scale with the evaluated SI variable table. This is a declared CAD convention, not geometry inference."
 }

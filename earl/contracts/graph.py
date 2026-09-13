@@ -162,6 +162,9 @@ class ChangeEvent(Serializable):
     node_before: str | None = None
     node_after: str | None = None
     load_case_id: str = "lc_1"
+    deltas: list[ChangeEvent] = field(default_factory=list)
+    member_after: Member | None = None
+    section_after: Section | None = None
 
     def apply(self, graph: DependencyGraph) -> DependencyGraph:
         """Apply a typed SI delta to a copy, rejecting stale before values.
@@ -171,6 +174,15 @@ class ChangeEvent(Serializable):
         Legacy string-only events still deserialize, but cannot drive a solve.
         """
         graph.validate()
+        if self.deltas:
+            if len(self.deltas) > 100 or any(delta.deltas for delta in self.deltas):
+                raise ValueError("batch edits must be flat and contain at most 100 typed deltas")
+            result = deepcopy(graph)
+            for delta in self.deltas:
+                result = delta.apply(result)
+            result.change = deepcopy(self)
+            result.validate()
+            return result
         if self.target_kind is None or self.field_name is None:
             raise ValueError("a typed change is required; strings are not solver input")
         for value in (self.numeric_before, self.numeric_after):
@@ -189,6 +201,26 @@ class ChangeEvent(Serializable):
             return self.numeric_after
 
         if self.target_kind is TargetKind.MEMBER:
+            if self.field_name == "present" and self.kind is ChangeKind.FEATURE_EDIT:
+                if self.target_id in {m.id for m in result.members} or checked(0.0) != 1:
+                    raise ValueError("member restoration requires absent: 0 -> 1")
+                member, section = deepcopy(self.member_after), deepcopy(self.section_after)
+                if (member is None or section is None or member.id != self.target_id
+                        or member.section_id != section.id):
+                    raise ValueError("restoration needs explicit member and section data")
+                if section.id in {s.id for s in result.sections}:
+                    if result.section(section.id) != section:
+                        raise ValueError("restored section conflicts with existing section")
+                else:
+                    result.sections.append(section)
+                result.members.append(member)
+                for other in result.members:
+                    if other.id != member.id and {other.start_node, other.end_node} & {member.start_node, member.end_node}:
+                        result.edges.extend((Edge(other.id, member.id, EdgeKind.TOPOLOGY),
+                                             Edge(member.id, other.id, EdgeKind.TOPOLOGY)))
+                result.affected_member_ids = [m.id for m in result.members]
+                result.validate()
+                return result
             member = result.member(self.target_id)
             if self.kind is ChangeKind.MEMBER_REMOVED and self.field_name == "present":
                 if checked(1.0) != 0:

@@ -16,7 +16,7 @@ from functools import lru_cache
 from pathlib import Path
 from threading import BoundedSemaphore
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -30,6 +30,7 @@ from earl.pipeline import STAGES, StageEvent, run_pipeline
 from earl.scenarios import AREA_RANGE_IN2, LOAD_RANGE_KN, catalogue, make_change
 from earl.units import IN
 from earl.watch.state import Ledger
+from earl.watch import webhooks
 
 app = FastAPI(title="EARL Structural CI", docs_url=None, redoc_url=None)
 OUTPUT_ROOT = PROJECT_ROOT / "out"
@@ -188,6 +189,25 @@ def agent_runs():
                             headers={"Cache-Control": "no-store"})
     except (RuntimeError, OSError) as exc:
         raise HTTPException(status_code=503, detail="Agent ledger unavailable; no state reset performed.") from exc
+
+
+@app.post("/api/webhook/onshape")
+async def onshape_webhook(request: Request):
+    if not webhooks.enabled():
+        raise HTTPException(status_code=403, detail="Live webhook reception is disabled.")
+    raw = await request.body()
+    try:
+        # Only bounded authentication and a durable inbox append. No API call,
+        # pipeline invocation, watcher start, or BackgroundTask in this route.
+        result = await asyncio.to_thread(webhooks.receive, raw, request.headers,
+                                         Ledger(OUTPUT_ROOT / "agent" / "state.json"))
+        return JSONResponse(result, status_code=200, headers={"Cache-Control": "no-store"})
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail="Webhook authentication or scope rejected.") from exc
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail="Malformed webhook event.") from exc
+    except (OSError, RuntimeError, OverflowError) as exc:
+        raise HTTPException(status_code=503, detail="Webhook not persisted; retry required.") from exc
 
 
 def _run_file(run_id: str, name: str, *, trace: bool = False) -> Path:

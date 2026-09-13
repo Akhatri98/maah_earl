@@ -26,6 +26,10 @@ def main(argv: list[str] | None = None) -> int:
     watch.add_argument("--fixture-file", type=str, default=None)
     watch.add_argument("--allow-live", action="store_true", help="Also requires DEMO_MODE=false")
     watch.add_argument("--ticks", type=int, default=None, help="Stop after N ticks (smoke testing)")
+    administration = watch.add_mutually_exclusive_group()
+    administration.add_argument("--register-webhook", metavar="HTTPS_URL")
+    administration.add_argument("--unregister-webhook", metavar="ID")
+    administration.add_argument("--list-webhooks", action="store_true")
     args = parser.parse_args(argv)
     if args.command == "watch":
         from pathlib import Path
@@ -34,7 +38,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.ticks is not None and args.ticks < 1:
                 raise ValueError("ticks must be positive")
             run_watch(mode=args.mode, interval=args.interval, allow_live=args.allow_live,
-                      fixture_file=Path(args.fixture_file) if args.fixture_file else None, ticks=args.ticks)
+                      fixture_file=Path(args.fixture_file) if args.fixture_file else None, ticks=args.ticks,
+                      register_url=args.register_webhook, unregister_id=args.unregister_webhook,
+                      list_hooks=args.list_webhooks)
         except (ValueError, RuntimeError, OSError) as exc:
             parser.error(str(exc))
         return 0

@@ -31,11 +31,67 @@ A process lock permits one watcher per ledger; a heartbeat lease lets the
 UI recognize a stopped/crashed watcher. Pipeline errors are recorded and the
 loop continues. Interrupted work can be evaluated again after restart.
 
-Phase 1 always disables pipeline live calls and saves an additional
+The independently committed Phase 1 disables pipeline live calls and saves an additional
 `agent-notice.eml` for a new escalation or recovery. Local notice creation is
 not Gmail delivery. Missing live trigger configuration falls back explicitly
 to fixture mode. Webhooks, quota enforcement and autonomous live send are
-not claimed as verified by this phase.
+not claimed as verified by that checkpoint.
+
+## Live Trigger Contract: Phase 2
+
+The webhook inbox now exists at `POST /api/webhook/onshape`; it authenticates,
+checks document/workspace scope, persists bounded metadata, and responds 200
+without solving. `DEMO_MODE=false` and `EARL_ALLOW_LIVE_WEBHOOKS=true` are both
+required. Only the separately started trusted watcher spends live API calls.
+Public demo mode rejects even a correctly authenticated callback.
+
+The current [Onshape OpenAPI](https://cad.onshape.com/api/openapi) was downloaded
+without credentials on 2026-09-13: server `/api/v17`, revision
+`1.220.87929-d54ca734df42`, SHA256
+`5c072358064bee2f5fc2ea9df131ef43e471e65633d56267a88ab9abb93ac7ee`.
+It specifies `onshape.model.lifecycle.changed`, `documentId`, `workspaceId`,
+`events`, `url`, `data`, `options.collapseEvents`, and `isTransient`.
+The schema's callback entry incorrectly says GET while the current
+[developer guide](https://onshape-public.github.io/docs/app-dev/webhook/)
+explicitly specifies POST delivery; EARL follows the guide and records this
+unverified-live discrepancy. Lifecycle registration/ping need 200, not a
+challenge response. There is no documented expiry timestamp: non-transient
+registration prevents inactivity cleanup; daily GET plus renewal/re-registration
+handles a transient or removed managed hook. Explicit unregister disables renewal.
+
+The echoed `data` token is a shared bearer secret over HTTPS, not cryptographic
+payload integrity. Optional company HMAC uses the documented timestamp/raw-body
+construction and primary/secondary signature headers, with a five-minute
+freshness limit. Secrets and complete callbacks are not stored or exposed.
+Message IDs are deduplicated persistently (last 10,000); inbox capacity is 256.
+A full/unwritable inbox returns 503 so delivery is not falsely acknowledged.
+[Signature source](https://cad.onshape.com/help/Content/Plans/enterprise_settings_webhooks.htm).
+
+Every Onshape client request reserves the local counter before transport,
+including failures/redirects, and cannot exceed `ONSHAPE_CALL_BUDGET`.
+This is deliberately more conservative than Onshape's billable 2xx/3xx count.
+Seed prior account usage with `ONSHAPE_CALLS_USED`; other applications' future
+calls are not visible locally. No annual automatic reset is invented because
+account allocation renewal dates differ. Exhaustion is shown in agent status.
+Poll defaults to six hours (minimum one hour), with pacing persisted across
+restart. Webhook snapshot batches are paced to 60 seconds by default. Both
+read only `currentmicroversion` first, then cache immutable assembly/variable
+snapshots; no full assembly fetch occurs on unchanged ticks.
+[Annual quota source](https://onshape-public.github.io/docs/auth/limits/).
+
+Contract 0.3 adds flat typed batches and explicit member restoration so a
+collapsed multi-edit event is evaluated atomically, not at imagined intermediate
+states. Reconstruction is checked against all observed physical properties.
+Names tolerate case/space/occurrence suffixes and optional `area_mN` variables
+are declared data. Unknown live instances, unsupported materials/restraints/
+policy changes, or an empty live assembly produce ERROR, never partial approval.
+See [Onshape setup](docs/ONSHAPE_SETUP.md) for exact CAD requirements.
+
+**No Onshape credentials or populated live document were available.** HTTP
+handshake, signature, budget, queue, pinned reads, batched diffs, and renewal
+are tested with mocks shaped from current documentation, not real callbacks.
+On unavailable live triggers, a separate fixture source remains usable and is
+never reported as live CAD evidence.
 
 ## Baseline Protocol (Specified Before Evaluation)
 
@@ -119,7 +175,9 @@ experimental claim.
   These are demonstrator parameters, distinct from benchmark validation.
 - The supplied snapshot is the before-model. Each run applies one proposed
   typed delta to that snapshot; edits do not accumulate between demo runs.
-  There is no live Onshape webhook listener or historical-state reconstruction.
+  These manual demo runs remain independent. The autonomous watcher separately
+  keeps observed before/after snapshots and has an authenticated webhook inbox;
+  it does not reconstruct unobserved historical microversions.
 - The evaluated SI Onshape variable table supplies dimensions and section
   area; `safetyFactor` is a design target. `hard_floor` is at least 1.0 and
   cannot be weakened by a payload or environment setting. The legacy
