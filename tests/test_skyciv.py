@@ -150,12 +150,45 @@ class TestBuildS3DModel(unittest.TestCase):
         self.assertEqual(n1["z"], 0.0)
 
     def test_section_area_in_mm2_and_inertia_in_mm4(self):
+        """Inertia must be POSITIVE, not the contract's zero.
+
+        A truss section carries area only, so `Section.iy/iz/j` are 0.0 and
+        this used to send zeros. SkyCiv rejects the entire model for it --
+        `sections[N]/Iy should be > 0` -- which is why the live Stage 3 call
+        failed for every truss graph we had. `section_inertias` derives a
+        solid-square equivalent from the area instead; see its docstring for
+        why this cannot move a safety factor.
+        """
         (sec,) = self.model["sections"].values()
         self.assertAlmostEqual(sec["area"], AREA * 1e6)          # 1 in^2 = 645.16 mm^2
         self.assertAlmostEqual(sec["area"], 645.16, places=6)
         self.assertEqual(sec["material_id"], 1)
+
+        # Solid square of the same area: I = A^2/12, J ~ 0.1406 A^2, in mm^4.
+        self.assertAlmostEqual(sec["Iy"], (AREA ** 2 / 12.0) * 1e12, places=3)
+        self.assertAlmostEqual(sec["Iz"], sec["Iy"], places=9)
+        self.assertAlmostEqual(sec["J"], 0.1406 * AREA ** 2 * 1e12, places=3)
         for key in ("Iy", "Iz", "J"):
-            self.assertEqual(sec[key], 0.0)
+            self.assertGreater(sec[key], 0.0, f"{key} must be > 0 or SkyCiv 400s")
+
+    def test_a_section_that_carries_inertia_keeps_it(self):
+        """The fallback is per field and only fires on a non-positive value,
+        so a real frame section is passed through untouched."""
+        from earl.artifacts.skyciv_client import section_inertias
+        from earl.contracts import Section
+
+        self.assertEqual(
+            section_inertias(Section("s", "real", area=0.01, iy=2.0, iz=3.0, j=4.0)),
+            (2.0, 3.0, 4.0),
+        )
+
+    def test_a_zero_area_section_does_not_invent_inertia(self):
+        """Zero area is a malformed section; the solver rejects it upstream,
+        and this must not paper over it with a positive-looking number."""
+        from earl.artifacts.skyciv_client import section_inertias
+        from earl.contracts import Section
+
+        self.assertEqual(section_inertias(Section("s", "bad", area=0.0)), (0.0, 0.0, 0.0))
 
     def test_material_in_mpa(self):
         (mat,) = self.model["materials"].values()

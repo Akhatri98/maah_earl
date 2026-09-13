@@ -47,7 +47,7 @@ from typing import Any, Callable
 import requests
 
 from ..config import SkyCivConfig
-from ..contracts import DependencyGraph, SupportType
+from ..contracts import DependencyGraph, Section, SupportType
 
 # ---------------------------------------------------------------------------
 # Constants block. EVERYTHING that names a SkyCiv function or encodes a SkyCiv
@@ -149,6 +149,44 @@ class S3DModel:
     member_index: dict[str, int]
 
 
+def section_inertias(section: Section) -> tuple[float, float, float]:
+    """(Iy, Iz, J) in m^4 for a contract section, filling in a defensible
+    stand-in when the contract carries none.
+
+    A truss member is axial-only, so `Section.iy/iz/j` default to 0.0 and the
+    benchmark publishes AREA ONLY -- PyNite never needs more, and neither does
+    Biject. SkyCiv does: its section-builder format rejects the whole model
+    with `sections[N]/Iy should be > 0` if any of the three is zero, which is
+    why the live Stage 3 call failed for every truss graph we have.
+
+    Rather than invent numbers in the graph builders (which would put fake
+    inertia into the contract, where nothing else wants it), the adapter that
+    needs them derives them here, from the one property the benchmark does
+    publish. Each bar is modelled as a SOLID SQUARE of the same area -- side
+    s = sqrt(A):
+
+        Iy = Iz = s^4 / 12    = A^2 / 12
+        J        ~ 0.1406 s^4 = 0.1406 A^2   (square torsion constant)
+
+    This changes nothing about the verdict. The safety factor comes from
+    Biject via axial stress and `Material.design_stress`, and both solvers
+    treat these members as pin-ended (`TRUSS_FIXITY`), so bending and torsion
+    stiffness are not in the load path. The numbers exist so the design-check
+    API has a section it will accept, and so the report names a real shape
+    instead of a degenerate one.
+
+    A section that DOES carry inertia keeps it: the fallback applies per
+    field, only when the value is non-positive.
+    """
+    fallback_i = (section.area ** 2) / 12.0 if section.area > 0 else 0.0
+    fallback_j = 0.1406 * (section.area ** 2) if section.area > 0 else 0.0
+    return (
+        section.iy if section.iy > 0 else fallback_i,
+        section.iz if section.iz > 0 else fallback_i,
+        section.j if section.j > 0 else fallback_j,
+    )
+
+
 def _constant_axis(graph: DependencyGraph) -> int | None:
     """Index (0=x, 1=y, 2=z) of a coordinate shared by every node, or None.
 
@@ -222,13 +260,14 @@ def build_s3d_model(graph: DependencyGraph, load_case_id: str) -> S3DModel:
         sec = graph.section(m.section_id)
         sid = len(section_index) + 1
         section_index[key] = sid
+        iy, iz, j = section_inertias(sec)
         sections[str(sid)] = {
             "name": sec.name,
             "material_id": material_index[m.material_id],
             "area": sec.area * M2_TO_MM2,
-            "Iz": sec.iz * M4_TO_MM4,
-            "Iy": sec.iy * M4_TO_MM4,
-            "J": sec.j * M4_TO_MM4,
+            "Iz": iz * M4_TO_MM4,
+            "Iy": iy * M4_TO_MM4,
+            "J": j * M4_TO_MM4,
         }
 
     members = {

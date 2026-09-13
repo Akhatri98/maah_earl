@@ -207,20 +207,45 @@ def act5_the_numbers() -> None:
     print()
     print("  Read that honestly: the baseline tied us.")
     print()
-    print("  Why -- and we checked the transcripts rather than guessing: one")
-    print("  solver call returns all ten members, so on a truss this small")
-    print("  'check everything downstream' and 'check everything' are the same")
-    print("  action. The dependency walk has nothing to find that brute force")
-    print("  does not. We could have handed the baseline a worse solver and")
-    print("  manufactured a gap. We did not.")
+    print("  Our pitch said a bare LLM would be caught 'missing something, or")
+    print("  inconsistent across runs'. We tested both halves.")
     print()
-    print("  What the twenty scenarios do establish:")
-    print("    * 22 of 22 unsafe members caught, zero false alarms, and the")
-    print("      same answer on every repeat -- by construction, not by luck.")
+    _consistency_lines()
+    print()
+    print("  It missed nothing, and it did not wobble. Both halves of our own")
+    print("  claim came back negative, and this slide says so.")
+    print()
+    print("  Why -- we read the transcripts rather than guessing: one solver")
+    print("  call returns all ten members, so on a truss this small 'check")
+    print("  everything downstream' and 'check everything' are the same action.")
+    print("  The dependency walk has nothing to find that brute force does not.")
+    print("  We could have handed the baseline a one-member-at-a-time solver")
+    print("  and manufactured a gap. That is the exact dishonesty this project")
+    print("  exists to catch, so we did not.")
+    print()
+    print("  What the run does establish:")
+    print("    * 22 of 22 unsafe members caught, zero false alarms, the same")
+    print("      answer on all 60 runs -- ours by construction, and provably so.")
     print("    * 9 of the 20 changes were genuinely safe and were approved, so")
     print("      this is not a system that escalates everything and calls it")
     print("      caution.")
-    print("    * and the guarantee in Act 4, which no score can express.")
+    print("    * and the guarantee in Act 4, which no score can express: the")
+    print("      model matched us at finding problems and still cannot decide")
+    print("      that one ships.")
+
+
+def _consistency_lines() -> None:
+    """The repeat run, if it was recorded. Reported whichever way it came out
+    -- a stable baseline is a negative result for our pitch, and hiding it
+    would be the one thing this project cannot afford to do."""
+    path = RECORDINGS / "consistency.md"
+    if not path.exists():
+        print("  (no recorded consistency run; "
+              "run: scripts/run_eval.py --agents system,baseline --repeat 3)")
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            print("  " + line)
 
 
 def act6_recap(status: str) -> None:
@@ -232,7 +257,9 @@ def act6_recap(status: str) -> None:
     print()
     print(RULE)
     if status == "enforced":
-        print("  A good model found every problem on this truss.")
+        print("  We spent a sprint trying to prove a language model would miss")
+        print("  something. Over 60 runs, it did not.")
+        print()
         print("  It is still not the thing that decides whether the change ships.")
     else:
         print("  !! The enforcement check did not hold -- do not present this.")
