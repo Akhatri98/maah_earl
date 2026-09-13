@@ -13,6 +13,30 @@ Work began on `astra`, containing the same commit as `dev` (`2cd8fdf`). The
 original 50 tests passed before contract changes. Only `astra` is a submission
 or deployment branch; `main` and the default branch are not changed.
 
+## Autonomous Operation: Phase 1
+
+`earl/watch/` wraps the unchanged pipeline and code-only Biject gate. It has
+no model tool loop. Fixture mode observes a local file's modification time
+and content; the synthetic edit script only saves that file, never requests
+verification. The browser polls read-only agent state and cannot start a
+watcher or enable live calls. The original 119 tests remain unchanged.
+
+The ledger uses a separate process lock, fsync, and atomic rename. Runs,
+source cursors, open escalations and notification dedup survive restart.
+An identical change fingerprint plus sorted violating IDs suppresses a repeat
+notice; a verified approval after escalation records a CLEARED notice.
+ERROR never clears an escalation. Reappearance after a cleared notice is a
+new incident. Corrupt state fails closed rather than resetting history.
+A process lock permits one watcher per ledger; a heartbeat lease lets the
+UI recognize a stopped/crashed watcher. Pipeline errors are recorded and the
+loop continues. Interrupted work can be evaluated again after restart.
+
+Phase 1 always disables pipeline live calls and saves an additional
+`agent-notice.eml` for a new escalation or recovery. Local notice creation is
+not Gmail delivery. Missing live trigger configuration falls back explicitly
+to fixture mode. Webhooks, quota enforcement and autonomous live send are
+not claimed as verified by this phase.
+
 ## Baseline Protocol (Specified Before Evaluation)
 
 1. Freeze twenty scenario definitions before collecting either system's

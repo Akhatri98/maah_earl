@@ -4,8 +4,8 @@
 
 # EARL
 
-EARL is CI for parametric CAD: structural regression tests with an enforced
-gate and a paper trail. An engineer changes a truss; EARL re-solves it,
+EARL is an autonomous CI agent for parametric CAD: structural regression tests with an enforced
+gate and a paper trail. It watches for an engineer's truss edits; EARL re-solves them,
 compares safety factors in code, holds failed changes in EARL, and writes
 an Engineering Change Notice for the responsible human. Its contribution is
 enforcement, notification, and record, not better physics.
@@ -21,6 +21,15 @@ notification policy, and per-change decision record on top; no Onshape merge
 or write capability is implemented.
 
 ## Try It
+
+Start the independently demoable offline agent with `python -m earl watch
+--mode fixture --interval 2`. In another terminal, run `python
+scripts/mutate_fixture.py thin-compression`. Do not press Run in the browser:
+the **Autonomous agent** ledger updates by itself. Repeat the same edit to see
+`SUPPRESSED`, then use `reinforce-chord` to produce a `CLEARED` notice.
+The local file is a synthetic CAD-edit trigger, not a live Onshape integration.
+Stop cleanly with Ctrl-C; `out/agent/state.json` preserves runs and dedup state.
+Phase 1 records local notices only; live triggers and delivery are separate phases.
 
 Open the live demo, choose **Thin m8: 8 in^2**, and click **Run structural
 check**. The member becomes thinner, the pipeline streams its work, and Biject
@@ -82,8 +91,8 @@ python -m earl run --scenario thin-compression
 ```
 
 The CLI exits 0 for approval, 2 for escalation, and 1 for error, and always
-attempts to write deliverables under `out/`. The current suite has 119 offline
-tests, including the original 50. The [two-minute script](DEMO.md) gives exact
+attempts to write deliverables under `out/`. The original 119 offline tests
+remain, with additional autonomous-operation tests. The [two-minute script](DEMO.md) gives exact
 demo clicks. [RELIABILITY.md](RELIABILITY.md) records benchmark numbers,
 baseline protocol, assumptions, and deployment verification.
 

@@ -29,6 +29,7 @@ from earl.ingestion.truss_map import map_assembly
 from earl.pipeline import STAGES, StageEvent, run_pipeline
 from earl.scenarios import AREA_RANGE_IN2, LOAD_RANGE_KN, catalogue, make_change
 from earl.units import IN
+from earl.watch.state import Ledger
 
 app = FastAPI(title="EARL Structural CI", docs_url=None, redoc_url=None)
 OUTPUT_ROOT = PROJECT_ROOT / "out"
@@ -169,6 +170,24 @@ def evaluation():
         return JSONResponse(cached_results(), headers={"Cache-Control": "public, max-age=300"})
     except (OSError, ValueError) as exc:
         raise HTTPException(status_code=503, detail="Committed eval cache unavailable.") from exc
+
+
+@app.get("/api/agent/status")
+def agent_status():
+    try:
+        return JSONResponse(Ledger(OUTPUT_ROOT / "agent" / "state.json").status(),
+                            headers={"Cache-Control": "no-store"})
+    except (RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Agent ledger unavailable; no state reset performed.") from exc
+
+
+@app.get("/api/agent/runs")
+def agent_runs():
+    try:
+        return JSONResponse({"runs": Ledger(OUTPUT_ROOT / "agent" / "state.json").public_runs()},
+                            headers={"Cache-Control": "no-store"})
+    except (RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Agent ledger unavailable; no state reset performed.") from exc
 
 
 def _run_file(run_id: str, name: str, *, trace: bool = False) -> Path:

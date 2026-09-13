@@ -275,8 +275,32 @@ SOFTWARE.
         display: grid;
         grid-template-columns: 248px minmax(420px, 1fr) 312px;
         grid-template-rows: minmax(338px, 1.05fr) minmax(295px, 1fr);
-        height: calc(100svh - 96px);
+        height: calc(100svh - 200px);
         min-height: 660px;
+      }
+      .agent-panel {
+        display: grid;
+        grid-template-columns: 248px minmax(0, 1fr);
+        min-height: 104px;
+        border-bottom: 1px solid var(--line);
+        background: #f1f6f4;
+      }
+      .agent-summary { padding: 12px 17px; border-right: 1px solid var(--line); }
+      .agent-summary h2 { display: flex; justify-content: space-between; gap: 10px; }
+      .agent-summary small { display: block; margin-top: 5px; overflow-wrap: anywhere; }
+      #agent-state { color: var(--muted); font: 10px var(--mono); }
+      #agent-state[data-running="true"] { color: var(--green); }
+      .agent-runs { padding: 9px 16px; min-width: 0; overflow-x: auto; }
+      .agent-runs table { width: 100%; min-width: 560px; font-size: 10px; border-collapse: collapse; }
+      .agent-runs td { padding: 3px 8px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+      .agent-runs td:first-child { width: 76px; font-family: var(--mono); }
+      .agent-runs tr[data-outcome="escalated"] td:nth-child(3) { color: var(--red); font-weight: 700; }
+      .agent-runs tr[data-outcome="approved"] td:nth-child(3) { color: var(--green); font-weight: 700; }
+      .agent-runs a { text-decoration: underline; text-underline-offset: 2px; }
+      #agent-empty { padding: 20px 8px; color: var(--muted); }
+      @media (max-width: 620px) {
+        .agent-panel { grid-template-columns: minmax(0, 1fr); }
+        .agent-summary { border-right: none; border-bottom: 1px solid var(--line); }
       }
       .sidebar {
         grid-column: 1;
@@ -1635,6 +1659,17 @@ SOFTWARE.
         ></a>
       </div>
     </header>
+    <section class="agent-panel" aria-labelledby="agent-title">
+      <div class="agent-summary">
+        <h2 id="agent-title">Autonomous agent <span id="agent-state">IDLE</span></h2>
+        <small id="agent-meta">No watcher heartbeat</small>
+        <small id="agent-budget">API budget: not loaded</small>
+      </div>
+      <div class="agent-runs" aria-live="polite">
+        <p id="agent-empty">No autonomous runs recorded.</p>
+        <table aria-label="Autonomous run ledger" hidden id="agent-table"><tbody id="agent-rows"></tbody></table>
+      </div>
+    </section>
     <main class="workspace">
       <aside class="sidebar">
         <section class="controls" aria-labelledby="controls-title">
@@ -2727,6 +2762,36 @@ SOFTWARE.
           setText("reason", "The offline fixture could not be loaded.");
         }
       }
+      async function refreshAgent() {
+        try {
+          const statusResponse = await fetch("/api/agent/status", {cache: "no-store"});
+          const runsResponse = await fetch("/api/agent/runs", {cache: "no-store"});
+          if (!statusResponse.ok || !runsResponse.ok) throw new Error("Agent ledger unavailable");
+          const status = await statusResponse.json();
+          const records = (await runsResponse.json()).runs;
+          setText("agent-state", status.state.toUpperCase());
+          $("agent-state").dataset.running = String(status.running);
+          setText("agent-meta", `${status.mode || "Not started"} | ${status.run_count} runs | ${status.open_escalations} open`);
+          $("agent-meta").title = `${status.last_tick || "No tick"} | ${status.message}`;
+          setText("agent-budget", `${status.remaining_api_calls} API calls left | ${status.undelivered} undelivered`);
+          $("agent-empty").hidden = records.length > 0;
+          $("agent-table").hidden = records.length === 0;
+          $("agent-rows").innerHTML = records.slice(0, 3).map(run =>
+            `<tr data-run-id="${esc(run.run_id)}" data-outcome="${esc(run.outcome)}">
+              <td>${esc(new Date(run.timestamp).toLocaleTimeString())}</td>
+              <td title="${esc(run.description)}">${esc(run.governing_member || "--")} / SF ${run.safety_factor == null ? "--" : Number(run.safety_factor).toFixed(2)}</td>
+              <td>${esc(run.outcome.toUpperCase())}</td>
+              <td>${esc(run.notice || "")} ${esc(run.notification_status)}</td>
+              <td>${esc(run.source)}</td>
+              <td><a href="/api/run/${esc(run.run_id)}/ecn" target="_blank" rel="noopener">ECN</a></td>
+            </tr>`).join("");
+        } catch (error) {
+          setText("agent-state", "UNAVAILABLE");
+          setText("agent-meta", error.message);
+        } finally {
+          setTimeout(refreshAgent, 2000);
+        }
+      }
       $("scenario").addEventListener("change", () =>
         setPreset($("scenario").value),
       );
@@ -2766,6 +2831,7 @@ SOFTWARE.
       });
       window.addEventListener("resize", hideTooltip);
       init();
+      refreshAgent();
     </script>
   </body>
 </html>

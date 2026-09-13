@@ -16,6 +16,12 @@ notice appears. Use a laptop viewport of at least 1366 x 768. The page loads
 the recorded model and automatically runs **Reinforce m1: 22 in^2**; wait for
 **APPROVED**. Keep the dev machine awake for the temporary tunnel.
 
+Start `python -m earl watch --mode fixture --interval 2` in a terminal. The
+Autonomous agent panel shows a heartbeat. Keep another terminal ready with
+`python scripts/mutate_fixture.py thin-compression`. This edits a local
+synthetic CAD event file; it does not invoke the pipeline. Do not call this a
+live Onshape edit. The agent persists its ledger across restarts.
+
 The offline backup is [localhost:8000](http://127.0.0.1:8000), running the same
 pipeline with no external requests. Do not enable live integrations for this
 script. Each run starts from the same before-model, not the previous edit.
@@ -24,8 +30,8 @@ script. Each run starts from the same before-model, not the previous edit.
 
 | Time | Action | Say |
 |---|---|---|
-| 0:00-0:15 | Point to the approved model and the acceptance gate. | "EARL is CI for parametric CAD. Onshape Simulation and SkyCiv already do the analysis. We make a numerical acceptance policy binding in EARL and leave a notice and record." |
-| 0:15-0:35 | In **Preset**, choose **Thin m8: 8 in^2**. Click **Run structural check**. | "This edit reduces a compression member from 20 to 8 square inches. We rebuild before and after from one typed change." |
+| 0:00-0:15 | Run the prepared fixture-edit command. Do not click Run. Watch a new ESCALATED row arrive in **Autonomous agent**. | "Nobody asked EARL to check this edit. It watches, evaluates, and reports on its own. This trigger is an offline CAD fixture." |
+| 0:15-0:35 | Point at the autonomous row, then open its ECN. | "Onshape Simulation and SkyCiv already do analysis. Our agent adds the binding code gate, notification policy, and durable record." |
 | 0:35-0:55 | Follow the trace to **Gate** and point at **ESCALATED**. | "The computed safety factor is 0.478 against a hard floor of 1.0. Euler buckling governs. Code makes this decision. A model has no merge tool." |
 | 0:55-1:15 | Click **Compare** above the truss; hover m8. Then click **After**. | "The before-model passes. This change does not. All members are checked because forces redistribute through this indeterminate structure." |
 | 1:15-1:35 | In the bottom-right artifact panel, click **ECN** if needed; point at the report provenance below it. | "The ECN records the gate's decision. The SkyCiv attachment is a genuine published example of a different model. Independent numerical cross-check: not performed. We do not pretend this fixture is a live solve." |

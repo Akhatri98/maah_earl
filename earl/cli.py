@@ -20,7 +20,24 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--live", action="store_true", help="Allow optional APIs only when DEMO_MODE=false")
     run.add_argument("--json", action="store_true", help="Emit the final record as JSON")
     commands.add_parser("eval", help="Reproduce the twenty-case evaluation offline")
+    watch = commands.add_parser("watch", help="Watch continuously; fixture mode needs no credentials")
+    watch.add_argument("--mode", choices=("fixture", "poll", "webhook"), default="fixture")
+    watch.add_argument("--interval", type=float, default=None)
+    watch.add_argument("--fixture-file", type=str, default=None)
+    watch.add_argument("--allow-live", action="store_true", help="Also requires DEMO_MODE=false")
+    watch.add_argument("--ticks", type=int, default=None, help="Stop after N ticks (smoke testing)")
     args = parser.parse_args(argv)
+    if args.command == "watch":
+        from pathlib import Path
+        from earl.watch.watcher import run_watch
+        try:
+            if args.ticks is not None and args.ticks < 1:
+                raise ValueError("ticks must be positive")
+            run_watch(mode=args.mode, interval=args.interval, allow_live=args.allow_live,
+                      fixture_file=Path(args.fixture_file) if args.fixture_file else None, ticks=args.ticks)
+        except (ValueError, RuntimeError, OSError) as exc:
+            parser.error(str(exc))
+        return 0
     if args.command == "eval":
         from earl.eval.harness import evaluate
         results = evaluate(write=True)
