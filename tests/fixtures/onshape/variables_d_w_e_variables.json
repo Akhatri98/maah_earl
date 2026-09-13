@@ -1,6 +1,28 @@
 [
   {
     "variableStudioReference": null,
-    "variables": []
+    "variables": [
+      {
+        "type": "LENGTH",
+        "name": "bayWidth",
+        "value": null,
+        "expression": "360 in",
+        "description": ""
+      },
+      {
+        "type": "LENGTH",
+        "name": "bayHeight",
+        "value": null,
+        "expression": "360 in",
+        "description": ""
+      },
+      {
+        "type": "ANY",
+        "name": "barArea",
+        "value": null,
+        "expression": "1 in^2",
+        "description": ""
+      }
+    ]
   }
 ]
