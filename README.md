@@ -7,7 +7,7 @@ Built for the Multi-App AI Agent Hackathon by Lemma.
 
 | | |
 |---|---|
-| **▶ Two-minute demo** | _<!-- TODO: paste the video link here before submitting -->_ |
+| **▶ Two-minute demo** | https://youtu.be/6Gv-TnMPO8k |
 | **Live site** | `python3 scripts/serve.py --ngrok` — drive it yourself, see [The site](#the-site) |
 | **Terminal demo** | `python3 scripts/demo.py` — six acts, ~4 min |
 | **Tests** | 805, all offline: `python3 -m unittest discover -s tests -t . -q` |
