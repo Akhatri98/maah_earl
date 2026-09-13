@@ -53,8 +53,8 @@ from earl.contracts import (  # noqa: E402
 )
 
 REL_TOL = 1e-2
-EXPECTED_M5_SF = 0.806
-EXPECTED_M5_STRESS_BEFORE = 1.7239e8       # Pa (~25.003 ksi)
+EXPECTED_M5_SF = 0.735                     # capacity = 25 ksi allowable (Sprint 4)
+EXPECTED_M5_STRESS_BEFORE = 1.5671e8       # Pa (~22.73 ksi; optimum x 1.10 margin)
 
 
 def _rel_close(actual: float, expected: float, tol: float = REL_TOL) -> bool:
@@ -244,7 +244,7 @@ class TestThreshold(unittest.TestCase):
     def test_higher_threshold_escalates_more(self):
         d = run_fast_gate(demo_before_graph(), threshold=2.5)
         self.assertIs(d.outcome, Outcome.ESCALATED)
-        self.assertIn("m5", d.violating_member_ids)     # SF ~ 2.0 at the optimum
+        self.assertIn("m5", d.violating_member_ids)     # SF ~ 1.10 on the demo design
         self.assertEqual(d.safety_factor_threshold, 2.5)
         d.validate()
 

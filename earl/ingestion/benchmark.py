@@ -18,22 +18,18 @@ converted to SI exactly once, here -- the single conversion point
 
 The benchmark's properties are E = 10^7 psi, rho = 0.1 lb/in^3, allowable
 stress 25 ksi. Those are aluminium: A36 steel is E = 29x10^6 psi, rho =
-0.284 lb/in^3, yield 36 ksi. `scripts/contract_selfcheck.py` currently labels
-E = 6.895e10 Pa (= 10^7 psi, aluminium) as "A36 Steel" and pairs it with
-steel's density and steel's yield -- a mix of two materials.
+0.284 lb/in^3, yield 36 ksi.
 
-That matters unevenly:
+## Yield and allowable are both carried (Sprint 4 agreement)
 
-  * E is already the benchmark value, so Track B's displacement validation is
-    unaffected either way.
-  * density only bites once self-weight is switched on (it is off by default).
-  * the allowable stress sets member CAPACITY, and therefore the safety factor
-    that decides approve-vs-escalate. 36 ksi instead of 25 ksi makes every
-    member read about 44% safer than the benchmark says it is.
-
-This module uses the published benchmark values. `contract_selfcheck.py` is a
-Sprint 0 artifact owned by neither track, so it is left alone pending
-agreement rather than changed unilaterally.
+`Material.yield_strength` is the material's yield -- 50 ksi, nominal 2024-T3,
+what SkyCiv's design check needs -- and `Material.allowable_stress` is the
+benchmark's 25 ksi design allowable, which is what Biject computes capacity
+from. Earlier revisions put the 25 ksi allowable in `yield_strength` here
+while Track B's `earl/analysis/benchmark.py` put 50 ksi in the same field, so
+every safety factor depended on which builder produced the graph and the two
+differed by exactly 2x. The contract now has a field for each number and
+`tests/test_pipeline.py` asserts the two builders agree.
 """
 
 from __future__ import annotations
@@ -58,7 +54,8 @@ LB_PER_IN3_TO_KG_M3 = 0.45359237 / IN**3   # -> 27679.9
 # -- the published benchmark, in SI -----------------------------------------
 
 E_ALUMINIUM = 1.0e7 * PSI_TO_PA            # 6.895e10 Pa
-ALLOWABLE_STRESS = 25_000 * PSI_TO_PA      # 1.724e8 Pa -- sets member capacity
+YIELD_STRENGTH = 50_000 * PSI_TO_PA        # 3.447e8 Pa -- Fy (2024-T3), for design-code checks
+ALLOWABLE_STRESS = 25_000 * PSI_TO_PA      # 1.724e8 Pa -- sets member capacity in Biject
 DENSITY = 0.1 * LB_PER_IN3_TO_KG_M3        # 2768 kg/m^3
 DEFAULT_AREA = 1.0 * IN**2                 # 6.4516e-4 m^2
 BENCHMARK_LOAD = 100.0 * KIP_TO_N          # 444_822 N
@@ -132,8 +129,9 @@ def benchmark_spec(
             id=MATERIAL_ID,
             name="Benchmark aluminium (E = 10^7 psi)",
             elastic_modulus=E_ALUMINIUM,
-            yield_strength=ALLOWABLE_STRESS,
+            yield_strength=YIELD_STRENGTH,
             density=DENSITY,
+            allowable_stress=ALLOWABLE_STRESS,
         ),
         section=Section(
             id=SECTION_ID,

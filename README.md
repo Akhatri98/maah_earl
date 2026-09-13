@@ -1,2 +1,70 @@
-# maah_cascade
-Multi-App AI Agent Hackathon by Lemma
+# EARL — Engineering Analysis & Rating Ledger
+
+Multi-App AI Agent Hackathon by Lemma. See `Plan/plan.md` for the pitch and
+`Plan/sprint_timeline.md` for how the work was split.
+
+EARL watches a CAD change in Onshape, walks every member downstream of it,
+runs a real structural solve (PyNite) behind a code-enforced safety threshold
+(Biject), has SkyCiv produce the trusted report when something fails, and
+mails the engineer an Engineering Change Notice that cites it. Nothing merges
+to Main unless the code says so.
+
+```
+Onshape change ─▶ DependencyGraph ─▶ walker ─▶ PyNite + Biject ─▶ Decision
+                  (earl.ingestion)             (earl.analysis)
+                                                     │ escalated
+                                                     ▼
+                                  SkyCiv report + cross-check (earl.artifacts)
+                                                     │
+                                                     ▼
+                              ECN ─▶ Gmail / outbox (earl.delivery)   (earl.pipeline wires it)
+```
+
+## Run it
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env                                # fill in what you have; everything below runs without it
+
+python3 -m unittest discover -s tests -t . -q        # 545 tests, all offline
+
+python3 scripts/run_pipeline.py                      # the demo change, every stage, offline
+python3 scripts/run_pipeline.py --onshape-fixture    # Track A's graph builder on the recorded Onshape read
+python3 scripts/run_pipeline.py --skyciv --send      # live SkyCiv + Gmail (needs credentials)
+python3 scripts/validate_solver.py                   # PyNite vs the published 10-bar truss optimum
+python3 scripts/contract_selfcheck.py                # the shared contracts and their guardrails
+```
+
+Without `--send` the e-mail is written to `artifacts/demo/outbox/*.eml`, byte
+for byte what Gmail would receive.
+
+## The demo change
+
+The 10-bar truss (Haftka & Gürdal / Rajan) at its published optimum with a 10 %
+design margin. An engineer thins diagonal **m7** from 8.203 to 6.000 in² to
+save weight. m7 itself is fine (safety factor 1.11). Its neighbour **m5**, which
+nobody touched, drops to **0.73** and the change is HELD. That is the dropped
+domino the project exists to catch.
+
+## Layout
+
+| Package | Stage | Track |
+|---|---|---|
+| `earl/contracts` | the shared `DependencyGraph` / `Decision` boundary (v0.2.0) | both |
+| `earl/ingestion` | Onshape client, parsers, graph builder, walker, branch sandbox | A |
+| `earl/analysis` | PyNite solver, Biject thresholds, planner, benchmark, scoreboard, SVG | B |
+| `earl/artifacts` | SkyCiv client, escalation, cross-check | B |
+| `earl/delivery` | ECN template and renderers, Gmail delivery | A |
+| `earl/pipeline.py` | the end-to-end wire (Sprint 4) | both |
+
+## Conventions that bite
+
+- **SI everywhere** inside the contracts (m, N, Pa). The benchmark's imperial
+  numbers are converted once, in each track's `benchmark.py`.
+- **Two stresses on a material.** `yield_strength` is yield (50 ksi here; what
+  SkyCiv's design check uses). `allowable_stress` is the design allowable
+  (25 ksi; what Biject computes capacity from). Safety factor = allowable /
+  stress. See `earl/contracts/README.md`.
+- **The threshold floor is code.** `SAFETY_FACTOR_THRESHOLD` in `.env` can only
+  raise the bar above 1.0; a value below it raises before anything is solved.

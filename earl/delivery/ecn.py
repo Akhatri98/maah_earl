@@ -37,8 +37,13 @@ real ECN wants are not on it --
 
 Rather than amend a shared contract unilaterally mid-sprint, both are accepted
 as optional arguments and the ECN degrades honestly without them: it says the
-provenance is unavailable instead of inventing a reason. If Track B agrees to
-carry them, this module keeps working unchanged.
+provenance is unavailable instead of inventing a reason.
+
+Sprint 4 closed that gap: contract 0.2.0 carries `Decision.source` and
+`MemberResult.hops_from_change` / `reached_via`, and `earl.pipeline` fills them
+from the graph and the walk before the decision crosses the boundary. So a
+Decision alone IS now sufficient. The graph and walk remain accepted -- a walk
+still gives the full path ("m7 -> m5"), which the contract fields do not carry.
 
 ## The one thing this module must never do
 
@@ -231,9 +236,10 @@ def _provenance(
 ) -> tuple[str | None, str | None]:
     """How this member came to be affected: (full, short).
 
-    Prefers the walk (distance + edge kind), falls back to the graph's flat
-    affected list, then to the decision's bare bool -- saying plainly when it
-    does not know, rather than implying a dependency it cannot evidence.
+    Prefers the walk (distance + edge kind + path), then the decision's own
+    `hops_from_change` / `reached_via` (contract 0.2.0), then the graph's flat
+    affected list, then the bare bool -- saying plainly when it does not know,
+    rather than implying a dependency it cannot evidence.
     """
     if walk is not None and hasattr(walk, "reach"):
         reach = walk.reach(member_id)
@@ -247,6 +253,17 @@ def _provenance(
         via_name = via.value if via is not None else "dependency"
         plural = "hop" if hops == 1 else "hops"
         return (full, f"{hops} {plural} via {via_name}")
+
+    if result.hops_from_change is not None:
+        hops = result.hops_from_change
+        if hops == 0:
+            return (f"{member_id} is the change target", "change target")
+        via_name = result.reached_via.value if result.reached_via is not None else "dependency"
+        plural = "hop" if hops == 1 else "hops"
+        return (
+            f"{member_id} is {hops} hop(s) downstream via {via_name}",
+            f"{hops} {plural} via {via_name}",
+        )
 
     if graph is not None and graph.affected_member_ids:
         downstream = member_id in graph.affected_member_ids
@@ -398,14 +415,23 @@ def build_ecn(
         )
 
     change = graph.change if graph is not None else None
+    # The decision's own copy wins when both are present: it is the one that
+    # was validated at the boundary, and the graph may be a different revision.
+    source = decision.source or (graph.source if graph is not None else None)
+    carries_hops = any(r.hops_from_change is not None for r in decision.member_results)
 
     notes: list[str] = []
-    if graph is None:
+    if graph is None and source is None and not carries_hops:
         notes.append(
             "No dependency graph was supplied with this decision, so the "
             "Onshape source and the traversal provenance are omitted."
         )
-    elif walk is None:
+    elif graph is None:
+        notes.append(
+            "No dependency graph was supplied; the Onshape source and the "
+            "per-member provenance are taken from the decision itself."
+        )
+    elif walk is None and not carries_hops:
         notes.append(
             "No traversal result was supplied, so affected members are listed "
             "without the dependency path that reached them."
@@ -431,7 +457,7 @@ def build_ecn(
         evidence=_evidence(decision),
         cross_check_note=_cross_check_note(decision),
         sanity_note=_sanity_note(decision),
-        source=graph.source if graph is not None else None,
+        source=source,
         raised_at=now or decision.evaluated_at or _utc_now(),
         solver=" ".join(x for x in (decision.solver, decision.solver_version) if x),
         originator=originator,

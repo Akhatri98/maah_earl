@@ -28,6 +28,10 @@ from earl.analysis.benchmark import (  # noqa: E402
     TEN_BAR_OPTIMUM_AREAS_IN2,
     BenchmarkReport,
     build_ten_bar_graph,
+    DEMO_AFFECTED_MEMBER_IDS,
+    DEMO_AREAS_IN2,
+    DEMO_ONE_HOP_MEMBER_IDS,
+    DEMO_TWO_HOP_MEMBER_IDS,
     demo_before_graph,
     demo_change_graph,
     truss_weight_lb,
@@ -118,6 +122,8 @@ class TestTenBarGraph(unittest.TestCase):
         self.assertEqual(mat.id, "mat_al")
         self.assertAlmostEqual(mat.elastic_modulus, 6.894757e10, delta=1.0)
         self.assertAlmostEqual(mat.yield_strength, 3.447379e8, delta=100.0)
+        self.assertAlmostEqual(mat.allowable_stress, 1.7236893e8, delta=100.0)
+        self.assertAlmostEqual(mat.design_stress, mat.allowable_stress)
         self.assertAlmostEqual(mat.density, 2767.99, delta=0.01)
         self.assertAlmostEqual(self.graph.sections[0].area, 1.0 * 0.0254 ** 2)
         lc = self.graph.load_cases[0]
@@ -172,39 +178,56 @@ class TestDemoGraphs(unittest.TestCase):
         self.assertEqual(change.id, "chg-demo-m7")
         self.assertIs(change.kind, ChangeKind.FEATURE_EDIT)
         self.assertEqual(change.target_id, "m7")
-        self.assertEqual(change.value_before, "7.457 in^2")
-        self.assertEqual(change.value_after, "3.500 in^2")
+        self.assertEqual(change.value_before, "8.203 in^2")
+        self.assertEqual(change.value_after, "6.000 in^2")
         self.assertIn("m7", change.description)
 
     def test_demo_areas(self):
         graph = demo_change_graph()
-        self.assertAlmostEqual(graph.section("sec_m7").area, 3.5 * IN ** 2)
-        for mid, area in zip([m.id for m in graph.members], TEN_BAR_OPTIMUM_AREAS_IN2):
+        self.assertAlmostEqual(graph.section("sec_m7").area, 6.0 * IN ** 2)
+        for mid, area in zip([m.id for m in graph.members], DEMO_AREAS_IN2):
             if mid != "m7":
                 self.assertAlmostEqual(graph.section(f"sec_{mid}").area, area * IN ** 2)
+        # The demo design is the published optimum with a uniform 10 % margin.
+        for demo, opt in zip(DEMO_AREAS_IN2, TEN_BAR_OPTIMUM_AREAS_IN2):
+            self.assertAlmostEqual(demo, opt * 1.10, places=3)
 
     def test_demo_dependency_walk(self):
+        """The demo graph carries the full node-sharing topology (as Track
+        A's builder emits) and its affected sets are what the real walker
+        produces from it -- so the two tracks' graphs walk the same way."""
+        from earl.ingestion.walker import walk
+
         graph = demo_change_graph()
-        self.assertEqual(graph.affected_member_ids, ["m7", "m1", "m8", "m3", "m4", "m5", "m10", "m2"])
-        self.assertEqual(graph.affected_node_ids, ["n4", "n5"])
-        topo = {e.target_id for e in graph.edges if e.kind is EdgeKind.TOPOLOGY}
+        self.assertEqual(graph.affected_member_ids, DEMO_AFFECTED_MEMBER_IDS)
+        self.assertEqual(sorted(graph.affected_node_ids), ["n1", "n2", "n3", "n4", "n5", "n6"])
+        from_m7 = {e.target_id for e in graph.edges if e.kind is EdgeKind.TOPOLOGY and e.source_id == "m7"}
         path = {e.target_id for e in graph.edges if e.kind is EdgeKind.LOAD_PATH}
-        self.assertEqual(topo, {"m1", "m8", "m3", "m4", "m5", "m10"})
+        self.assertEqual(from_m7, {"m1", "m3", "m4", "m5", "m10"})   # m8 is n6-n3: 2 hops, not 1
         self.assertEqual(path, {"m5", "m2"})
-        self.assertTrue(all(e.source_id == "m7" for e in graph.edges))
+        # Every topology edge has its reverse, as in graph_builder.topology_edges().
+        topo = {(e.source_id, e.target_id) for e in graph.edges if e.kind is EdgeKind.TOPOLOGY}
+        self.assertEqual(topo, {(b, a) for a, b in topo})
+
+        result = walk(graph)
+        self.assertEqual(result.member_ids, graph.affected_member_ids)
+        self.assertEqual(result.at_distance(1), sorted(DEMO_ONE_HOP_MEMBER_IDS + ["m2"], key=lambda m: int(m[1:])))
+        self.assertEqual(result.at_distance(2), DEMO_TWO_HOP_MEMBER_IDS)
+        self.assertEqual(result.max_distance, 2)
 
     def test_demo_physics_r1(self):
-        """The edited member survives, its neighbour m5 does not (SF ~ 0.81)."""
+        """The edited member survives, its neighbour m5 does not (SF ~ 0.73),
+        with capacity at the benchmark's 25 ksi allowable."""
         result = solve(demo_change_graph(), LOAD_CASE_ID)
-        fy = 50.0 * KSI
-        self.assertAlmostEqual(abs(result.force("m5").stress) / KSI, 62.05, delta=0.01 * 62.05)
-        self.assertAlmostEqual(abs(result.force("m7").stress) / KSI, 37.5, delta=0.01 * 37.5)
-        self.assertLess(fy / abs(result.force("m5").stress), 1.0)
-        self.assertGreater(fy / abs(result.force("m7").stress), 1.0)
-        # R1 quotes "SF >= 3.4" for the rest; PyNite's exact minimum is 3.365 (m6).
+        fd = STRESS_LIMIT_KSI * KSI
+        self.assertAlmostEqual(abs(result.force("m5").stress) / KSI, 34.03, delta=0.01 * 34.03)
+        self.assertAlmostEqual(abs(result.force("m7").stress) / KSI, 22.58, delta=0.01 * 22.58)
+        self.assertLess(fd / abs(result.force("m5").stress), 1.0)
+        self.assertGreater(fd / abs(result.force("m7").stress), 1.0)
+        # Every other member keeps a comfortable margin; PyNite's minimum is 3.26 (m3).
         for mid in result.member_forces:
             if mid not in ("m5", "m7"):
-                self.assertGreaterEqual(fy / abs(result.force(mid).stress), 3.3)
+                self.assertGreaterEqual(fd / abs(result.force(mid).stress), 3.2)
 
     def test_demo_before_graph(self):
         before = demo_before_graph()
@@ -215,9 +238,9 @@ class TestDemoGraphs(unittest.TestCase):
         self.assertEqual(before.load_cases[0].id, LOAD_CASE_ID)
         self.assertEqual(before.change.id, after.change.id)
         self.assertNotEqual(before.id, after.id)
-        self.assertAlmostEqual(before.section("sec_m7").area, 7.457 * IN ** 2)
+        self.assertAlmostEqual(before.section("sec_m7").area, 8.203 * IN ** 2)
         stress_before = abs(solve(before, LOAD_CASE_ID).force("m5").stress)
-        self.assertAlmostEqual(stress_before, 1.7239e8, delta=1e-2 * 1.7239e8)
+        self.assertAlmostEqual(stress_before, 1.5671e8, delta=1e-2 * 1.5671e8)
 
 
 if __name__ == "__main__":

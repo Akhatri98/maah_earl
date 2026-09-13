@@ -30,8 +30,10 @@ The two tracks only need to sync at three points: agreeing the data contracts up
 |---|---|
 | ECN template — agent-generated from the decision-object schema, built and tested against **mocked** decision output so it doesn't block on Track B | SkyCiv API integration (trigger analysis, pull the report, AISC-style design checks); cross-check comparison logic (PyNite vs. SkyCiv agreement/disagreement) |
 
-### Sprint 4 — Integration (both)
+### Sprint 4 — Integration (both) — done
 Wire the two tracks together end to end: dependency graph → fast gate → Biject decision → (escalated) SkyCiv report → ECN → Gmail delivery. This is where Track A's graph output first meets Track B's real decision object instead of the mock.
+
+Delivered as `earl/pipeline.py` (`run_pipeline`), `earl/delivery/gmail.py`, contract 0.2.0 (`Material.allowable_stress`, `Decision.source`, `MemberResult.hops_from_change`/`reached_via`) and `scripts/run_pipeline.py`. The one real fit problem — the two tracks' graph builders disagreeing 2x on member capacity — is recorded and resolved in `Plan/sprint3a_handover.md`.
 
 ### Sprint 5
 | Track A | Track B |

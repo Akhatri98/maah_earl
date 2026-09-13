@@ -8,6 +8,9 @@ Pipeline stages (see Plan/plan.md):
 
 `earl.contracts` is the shared boundary between the two tracks and is owned
 by neither: change it only by agreement (see earl/contracts/README.md).
+
+`earl.pipeline` wires the four stages together (Sprint 4):
+`run_pipeline(graph) -> PipelineResult` (walk, decision, ECN, delivery).
 """
 
 __version__ = "0.1.0"

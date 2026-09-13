@@ -14,13 +14,17 @@ Conventions (binding for everything Track B emits):
     PyNite once). A positive force is checked against the tension capacity,
     a negative one against the compression capacity.
   * CAPACITY IS INTERNAL IN FORCE, EXTERNAL IN STRESS (R6).  `Capacity` (this
-    module only) holds forces: tension = Fy*A, compression = min(Fy*A, Euler
-    Pcr = pi^2 E I_min / (K L)^2) when an inertia is provided, else Fy*A with
-    the note "inertia not provided; buckling not checked". The contract's
-    `MemberResult.capacity` is a STRESS in Pa (capacity_force / area): Fy when
-    yield governs, Pcr/A when buckling governs, so that
-    capacity / |stress_after| == safety_factor exactly as in the Sprint 0 mock
-    (scripts/contract_selfcheck.py).
+    module only) holds forces: tension = Fd*A, compression = min(Fd*A, Euler
+    Pcr = pi^2 E I_min / (K L)^2) when an inertia is provided, else Fd*A with
+    the note "inertia not provided; buckling not checked". Fd is the DESIGN
+    stress, `Material.design_stress`: the declared `allowable_stress` when
+    the graph carries one, else `yield_strength` (Sprint 4 agreement -- the
+    10-bar benchmark checks against a 25 ksi allowable, not the 50 ksi
+    yield, and both tracks' graph builders now say so explicitly). The
+    contract's `MemberResult.capacity` is a STRESS in Pa (capacity_force /
+    area): Fd when the design stress governs, Pcr/A when buckling governs, so
+    that capacity / |stress_after| == safety_factor exactly as in the Sprint 0
+    mock (scripts/contract_selfcheck.py).
   * SAFETY FACTOR = capacity_force / |F|, capped at MAX_SAFETY_FACTOR (JSON
     has no Infinity). A ZERO-FORCE member (R7: |F| <= max(1e-9 N, 1e-9 x the
     largest |F| in the same SolveResult)) gets the cap, utilization 0.0 and
@@ -83,11 +87,12 @@ class Capacity:
 
 
 def member_capacity(graph: DependencyGraph, member_id: str) -> Capacity:
-    """Yield capacity Fy*A in tension; in compression the smaller of Fy*A and
+    """Design capacity Fd*A in tension; in compression the smaller of Fd*A and
     the Euler load pi^2 E I_min / (K L)^2 when the section carries a positive
-    inertia. Sections with iy = iz = 0 (the benchmark's bars) are yield-only
-    and say so in the note -- the honest, illustrative check plan.md's Scope
-    note allows."""
+    inertia. Fd is `Material.design_stress` -- the declared allowable when
+    there is one, else yield. Sections with iy = iz = 0 (the benchmark's
+    bars) are design-stress-only and say so in the note -- the honest,
+    illustrative check plan.md's Scope note allows."""
     member = graph.member(member_id)
     section = graph.section(member.section_id)
     material = graph.material(member.material_id)
@@ -98,8 +103,15 @@ def member_capacity(graph: DependencyGraph, member_id: str) -> Capacity:
             f"material {material.id!r} has non-positive yield strength "
             f"{material.yield_strength}"
         )
+    design_stress = material.design_stress
+    if design_stress <= 0.0:
+        raise ValueError(
+            f"material {material.id!r} has non-positive design stress {design_stress}"
+        )
 
-    yield_force = material.yield_strength * section.area
+    # "yield_force" is the design-stress capacity; the name is kept because
+    # the governing label the contract sees is "yield" (vs "buckling").
+    yield_force = design_stress * section.area
     i_min = min(section.iy, section.iz)
     if i_min <= 0.0:
         return Capacity(member_id, yield_force, yield_force, "yield", INERTIA_NOT_PROVIDED_NOTE)

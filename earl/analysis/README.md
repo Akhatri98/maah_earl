@@ -29,7 +29,7 @@ imports Stage 2, not the other way round).
 |---|---|
 | **SI only.** m, N, Pa, m², kg/m³. Every entry point calls `graph.units.assert_si()` and `graph.validate()`. The benchmark's imperial numbers are converted **once**, in `benchmark.py`. | `solver.solve`, `biject.evaluate`, `gate`, `scoreboard.ground_truth` |
 | **Axial force sign: tension positive, compression negative.** PyNite 3.2's `Member3D.axial()` is compression-positive; the adapter negates it once. `stress = F / A`, same sign. | `solver.solve` |
-| **`MemberResult.capacity` is a STRESS in Pa** (R6): `Fy` when yield governs, `Pcr / A` when Euler buckling governs, so `capacity / |stress_after| == safety_factor`. The force-valued `Capacity` dataclass is internal to `biject.py`. | `biject.evaluate_member` |
+| **`MemberResult.capacity` is a STRESS in Pa** (R6): the design stress `Fd = Material.design_stress` (the declared `allowable_stress` when set, else `yield_strength` — Sprint 4 agreement with Track A, contract 0.2.0) when that governs, `Pcr / A` when Euler buckling governs, so `capacity / |stress_after| == safety_factor`. The force-valued `Capacity` dataclass is internal to `biject.py`. | `biject.member_capacity`, `biject.evaluate_member` |
 | **Safety factor** `= capacity_force / |F|`, capped at `MAX_SAFETY_FACTOR = 1e6` (JSON has no Infinity). A zero-force member (`|F| <= max(1e-9 N, 1e-9 · max|F|)`) gets the cap, `utilization = 0.0` and the note `zero-force member; safety factor capped`. | `biject` |
 | **Threshold floor is code, not config.** `MIN_ALLOWED_THRESHOLD = 1.0`; Biject and the gate raise `ValueError` for anything below it or non-finite. `SAFETY_FACTOR_THRESHOLD` in `.env` can only raise the bar. | `biject._check_threshold`, `gate.resolve_threshold` |
 | **Every member is evaluated, every load case is evaluated.** `focus_member_ids` in a plan is advisory; with `evaluate_all_load_cases=True` (default) Biject takes each member's **worst** SF over all load cases and writes `governing load case '<lc>'` into its note. | `biject.evaluate`, `gate` |
@@ -129,9 +129,10 @@ n4 (360,0), n5 (0,360) PIN, n6 (0,0) PIN; members m1 n5–n3, m2 n3–n1,
 m3 n6–n4, m4 n4–n2, m5 n3–n4, m6 n1–n2, m7 n5–n4, m8 n6–n3, m9 n3–n2,
 m10 n4–n1. Converted to SI once here (`IN = 0.0254`, `KIP = 4448.2216`,
 `KSI = 6.894757e6`, `LB_PER_IN3 = 27679.9`). Material "Aluminium 2024-T3",
-E = 6.894757e10 Pa, **yield 50 ksi = 3.447379e8 Pa** (nominal 2024-T3 yield,
-used as capacity; the benchmark's 25 ksi is an *allowable* used only for the
-published-optimum checks), density 2767.99 kg/m³. Every member has its own
+E = 6.894757e10 Pa, **yield 50 ksi = 3.447379e8 Pa** (nominal 2024-T3 yield;
+what SkyCiv's design check uses) and **allowable 25 ksi = 1.723689e8 Pa** (the
+benchmark's published allowable; what Biject computes capacity from — Sprint 4
+agreement, contract 0.2.0), density 2767.99 kg/m³. Every member has its own
 `Section` (`sec_<mid>`, `iy = iz = j = 0`), so Biject notes
 `inertia not provided; buckling not checked` on every member — the honest,
 illustrative check `plan.md`'s scope note allows.
@@ -152,20 +153,32 @@ at all-1.0 in² (m1 +195364.99 … m10 −56744.80 lbf), not a published value.
 
 ### The demo change (R1)
 
-`demo_change_graph()`: the optimum with **m7 (n5–n4) thinned from 7.457 to
-3.500 in²** (`ChangeEvent chg-demo-m7`, `FEATURE_EDIT`, target `m7`),
-edges TOPOLOGY m7→{m1, m8, m3, m4, m5, m10}, LOAD_PATH m7→{m5, m2},
-`affected_member_ids = [m7, m1, m8, m3, m4, m5, m10, m2]`,
-`affected_node_ids = [n4, n5]`. `demo_before_graph()` is the unchanged
-optimum with the same ids. Verified numbers (threshold 1.0):
+With capacity at the 25 ksi allowable the published optimum sits *exactly* on
+the threshold (m5 at 25.003 ksi → SF 0.9999), which is correct for a
+stress-constrained optimum and useless as a safe before-state. The **demo
+design** is therefore the optimum with a uniform 10 % margin,
+`DEMO_AREAS_IN2 = optimum × 1.10` (m5 SF 1.10, every other member higher).
+Solver validation still uses the exact optimum.
 
-* **m5: stress 427.8 MPa (≈ 62.05 ksi), SF 0.806 → FAIL**; stress_before 172.4 MPa (25.003 ksi)
-* m7 (the edited member): 258.4 MPa, SF 1.334 → PASS
-* every other member SF ≥ 3.365 (m10); the optimum itself is APPROVED with m5 SF 2.0
+`demo_change_graph()`: the demo design with **m7 (n5–n4) thinned from 8.203 to
+6.000 in²** (`ChangeEvent chg-demo-m7`, `FEATURE_EDIT`, target `m7`). Edges
+are the full node-sharing TOPOLOGY set (`topology_edges()`, the same set Track
+A's `graph_builder.topology_edges()` derives from the Onshape mate connectors)
+plus LOAD_PATH m7→{m5, m2}; `affected_member_ids` is every member, as the
+fixed BFS from m7 reaches: 1 hop {m1, m3, m4, m5, m10} (+ m2 via load path),
+2 hops {m6, m8, m9}. `demo_before_graph()` is the unchanged demo design with
+the same ids. Verified numbers (threshold 1.0):
+
+* **m5: stress 234.6 MPa (≈ 34.03 ksi), SF 0.735 → FAIL**; stress_before 156.7 MPa (22.73 ksi)
+* m7 (the edited member): 155.7 MPa (22.58 ksi), SF 1.107 → PASS
+* every other member SF ≥ 3.26 (m3); the demo design itself is APPROVED with m5 SF 1.10
 * `violating_member_ids == ["m5"]`, `ground_truth(...) == ["m5"]`, outcome ESCALATED
 
 The edited member passes and its **neighbour** fails — a real downstream
-domino, which is the demo narrative.
+domino, which is the demo narrative. The same change through Track A's Sprint
+3A mock (`mock_decisions.escalated`, optimum without the margin, m7 7.46 →
+6.00) gives m5 SF 0.751 / m7 SF 1.101, and `run_fast_gate()` reproduces those
+literals (`tests/test_pipeline.py`).
 
 ## Scoreboard interchange (for Track A's eval harness, Sprint 5A)
 
@@ -228,15 +241,20 @@ All offline; the gate script only reaches the network for the LLM plan, never
 for the verdict. Tests: `python3 -m unittest discover -s tests -v` — every
 Track B test passes `threshold=1.0` explicitly and never reads `.env`.
 
-## Proposed contract amendments for Track A (R18 — proposals only, NOT implemented)
+## Contract amendments (R18)
+
+Done in Sprint 4 (contract 0.2.0): `Material.allowable_stress` (capacity),
+`Decision.source`, `MemberResult.hops_from_change` / `reached_via`, and item 2
+below (documented on `MemberResult`). `earl.pipeline.enrich_decision()` fills
+the new Decision fields from the graph and the walk. Still proposals:
 
 1. **A before-state slot.** Either `DependencyGraph.before: DependencyGraph | None`
    or a documented two-graph hand-off, so `stress_before` does not depend on the
    caller remembering to pass `before=` to `run_fast_gate`. Today the gate
    accepts a second graph and matches load cases by id (R11).
-2. **Document on `decision.py`:** axial force sign is tension positive
+2. ~~**Document on `decision.py`:** axial force sign is tension positive
    (`MemberResult.axial_force_after`), and `MemberResult.capacity` is a
-   **stress in Pa** (R6), so `capacity / |stress_after| == safety_factor`.
+   **stress in Pa** (R6), so `capacity / |stress_after| == safety_factor`.~~ Done.
 3. **Dict-typed fields in `Serializable._decode`.** `dict[str, Dataclass]`
    does not survive the JSON round-trip (values stay dicts), which is why
    `Scoreboard.scores` is a list. Supporting dict values would let

@@ -55,7 +55,8 @@ from earl.contracts import (  # noqa: E402
 # `earl/ingestion/benchmark.py`, which is the pipeline's single source.
 IN = 0.0254            # in -> m
 E_AL = 6.895e10        # 1e7 psi -> Pa
-ALLOWABLE = 1.724e8    # 25 ksi -> Pa; sets member capacity
+YIELD = 3.447e8        # 50 ksi -> Pa; Fy, for design-code checks
+ALLOWABLE = 1.724e8    # 25 ksi -> Pa; sets member capacity (Material.allowable_stress)
 DENSITY = 2768.0       # 0.1 lb/in^3 -> kg/m^3
 AREA = 1.0 * IN**2     # 1 in^2 -> m^2
 P = 444_822.0          # 100 kips -> N
@@ -106,8 +107,9 @@ def build_graph() -> DependencyGraph:
                 "mat_al",
                 "Benchmark aluminium (E = 10^7 psi)",
                 E_AL,
-                ALLOWABLE,
+                YIELD,
                 density=DENSITY,
+                allowable_stress=ALLOWABLE,
             )
         ],
         sections=[Section("sec_1in2", "1 in^2 bar", AREA)],

@@ -33,11 +33,38 @@ class SupportType(str, Enum):
 
 @dataclass
 class Material(Serializable):
+    """Material properties, all stresses in the payload's `units`.
+
+    `yield_strength` is the material's yield (Fy) and means exactly that: it
+    is what a design-code check (SkyCiv) and a buckling check use.
+
+    `allowable_stress` is the DESIGN allowable the member is checked against.
+    When it is set, Biject computes member capacity from it; when it is None,
+    capacity falls back to `yield_strength`. It exists because the two tracks
+    once disagreed by exactly 2x about which of the two numbers belonged in
+    `yield_strength` (the 10-bar benchmark publishes a 25 ksi allowable for a
+    50 ksi material) -- the Pa-vs-MPa silent failure one level up. Carrying
+    both makes the convention explicit instead of a matter of who built the
+    graph.
+    """
+
     id: str
     name: str
     elastic_modulus: float    # E
-    yield_strength: float     # Track B derives member capacity from this
+    yield_strength: float     # Fy -- design-code checks and buckling use this
     density: float = 0.0      # 0 = ignore self-weight
+    # Design allowable; Biject uses it for capacity when set (see docstring).
+    allowable_stress: float | None = None
+
+    @property
+    def design_stress(self) -> float:
+        """The stress member capacity is computed from: the allowable when
+        declared, else yield. Consumers should read this, not pick a field."""
+        return (
+            self.allowable_stress
+            if self.allowable_stress is not None
+            else self.yield_strength
+        )
 
 
 @dataclass
@@ -246,6 +273,22 @@ class DependencyGraph(Serializable):
             raise ValueError(
                 f"affected_member_ids names unknown members: {sorted(unknown)}"
             )
+
+        for mat in self.materials:
+            if mat.allowable_stress is not None and mat.allowable_stress <= 0.0:
+                raise ValueError(
+                    f"material {mat.id!r} declares non-positive allowable "
+                    f"stress {mat.allowable_stress}"
+                )
+            if (
+                mat.allowable_stress is not None
+                and mat.yield_strength > 0.0
+                and mat.allowable_stress > mat.yield_strength
+            ):
+                raise ValueError(
+                    f"material {mat.id!r} declares allowable stress "
+                    f"{mat.allowable_stress} above its yield {mat.yield_strength}"
+                )
 
         if all(n.support is SupportType.FREE for n in self.nodes):
             raise ValueError(

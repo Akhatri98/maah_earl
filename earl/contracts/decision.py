@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .common import CONTRACT_VERSION, SI_UNITS, Serializable, Units
+from .graph import EdgeKind, OnshapeRef
 
 
 class Outcome(str, Enum):
@@ -40,7 +41,20 @@ class MemberStatus(str, Enum):
 @dataclass
 class MemberResult(Serializable):
     """Per-member verdict. `safety_factor` is capacity / demand -- below 1.0
-    means demand exceeds capacity."""
+    means demand exceeds capacity.
+
+    Conventions (binding, agreed in Sprint 4):
+
+    * `axial_force_after` and the stresses are TENSION POSITIVE.
+    * `capacity` is a STRESS in the payload's units, not a force: the design
+      stress (`Material.design_stress`) when yield/allowable governs, or the
+      Euler buckling stress Pcr / A when buckling governs, so that
+      `capacity / |stress_after| == safety_factor`.
+    * `hops_from_change` / `reached_via` are copied from the dependency walk
+      (`walker.Reach.distance` / `.via`); 0 hops with `reached_via None` is
+      the change target itself. Both None means the walk did not reach the
+      member (or no walk was run) -- `is_affected` alone cannot say which.
+    """
 
     member_id: str
     status: MemberStatus
@@ -55,6 +69,11 @@ class MemberResult(Serializable):
     is_affected: bool = False           # was it downstream of the change?
     onshape_id: str | None = None       # provenance, carried through for the ECN
     note: str | None = None
+
+    # How the change reached this member, so the ECN can say "1 hop via
+    # topology" without re-joining against the graph (contracts README rule 2).
+    hops_from_change: int | None = None
+    reached_via: EdgeKind | None = None
 
 
 @dataclass
@@ -123,6 +142,10 @@ class Decision(Serializable):
 
     # Denormalized from the graph so Track A can write the ECN without a join.
     change_description: str = ""
+    # Where the change was evaluated (document, workspace, branch). Also
+    # denormalized: an ECN that cannot name the sandbox branch is missing the
+    # branch-not-main claim plan.md makes.
+    source: OnshapeRef | None = None
 
     safety_factor_threshold: float = 1.0
     member_results: list[MemberResult] = field(default_factory=list)

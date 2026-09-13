@@ -5,10 +5,10 @@ verdict member by member, and optionally writes the Decision JSON and the
 SVG picture the demo and the ECN use.
 
 Defaults are the project's demo change (earl.analysis.benchmark, R1): the
-10-bar truss at its published optimum with member m7 thinned from 7.457 to
-3.500 in^2. The edited member survives; its neighbour m5 fails -- the
-downstream domino the whole project is about. When no --graph is given the
-demo's before-state (the unchanged optimum) is used as --before so the
+10-bar truss demo design (published optimum x 1.10) with member m7 thinned
+from 8.203 to 6.000 in^2. The edited member survives; its neighbour m5 fails --
+the downstream domino the whole project is about. When no --graph is given the
+demo's before-state (the unchanged demo design) is used as --before so the
 Decision carries stress_before as well as stress_after.
 
 Fully offline unless META_MUSE_KEY is set and --no-llm is NOT given, in

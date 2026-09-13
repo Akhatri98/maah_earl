@@ -261,8 +261,16 @@ class TestBenchmarkSpec(unittest.TestCase):
         self.assertAlmostEqual(
             self.spec.material.elastic_modulus / psi / 1e6, 10.0, places=2
         )
+        # Sprint 4: yield (50 ksi, 2024-T3) and the 25 ksi allowable are
+        # separate contract fields, and capacity comes from the allowable.
         self.assertAlmostEqual(
-            self.spec.material.yield_strength / psi / 1000, 25.0, places=2
+            self.spec.material.yield_strength / psi / 1000, 50.0, places=2
+        )
+        self.assertAlmostEqual(
+            self.spec.material.allowable_stress / psi / 1000, 25.0, places=2
+        )
+        self.assertAlmostEqual(
+            self.spec.material.design_stress, self.spec.material.allowable_stress
         )
 
     def test_area_tracks_the_barArea_variable(self):
@@ -384,6 +392,7 @@ class TestBenchmarkConstantsDoNotDrift(unittest.TestCase):
 
         pairs = [
             ("elastic modulus", self.selfcheck.E_AL, b.E_ALUMINIUM),
+            ("yield strength", self.selfcheck.YIELD, b.YIELD_STRENGTH),
             ("allowable stress", self.selfcheck.ALLOWABLE, b.ALLOWABLE_STRESS),
             ("density", self.selfcheck.DENSITY, b.DENSITY),
             ("area", self.selfcheck.AREA, b.DEFAULT_AREA),

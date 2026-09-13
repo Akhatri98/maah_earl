@@ -83,6 +83,55 @@ class SkyCivConfig:
         )
 
 
+@dataclass(frozen=True)
+class GmailConfig:
+    """Send-only Gmail credentials (OAuth refresh token flow).
+
+    The refresh token is minted once, out of band, for the
+    `https://www.googleapis.com/auth/gmail.send` scope only, so the pipeline
+    can post a message but never read a mailbox.
+    """
+
+    client_id: str
+    client_secret: str
+    refresh_token: str
+    sender: str
+    recipient: str
+    token_url: str = "https://oauth2.googleapis.com/token"
+    send_url: str = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+
+    @classmethod
+    def from_env(cls) -> GmailConfig:
+        load_env()
+        return cls(
+            client_id=require("GMAIL_CLIENT_ID"),
+            client_secret=require("GMAIL_CLIENT_SECRET"),
+            refresh_token=require("GMAIL_REFRESH_TOKEN"),
+            sender=require("GMAIL_SENDER_ADDRESS"),
+            recipient=require("GMAIL_NOTIFY_RECIPIENT"),
+        )
+
+    @classmethod
+    def configured(cls) -> bool:
+        """True when every Gmail variable is set -- so a script can choose
+        between sending and writing an .eml without raising."""
+        load_env()
+        return all(
+            os.environ.get(name)
+            for name in (
+                "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REFRESH_TOKEN",
+                "GMAIL_SENDER_ADDRESS", "GMAIL_NOTIFY_RECIPIENT",
+            )
+        )
+
+
+def skyciv_report_dir() -> Path | None:
+    """Where escalation saves SkyCiv report PDFs, or None when unset."""
+    load_env()
+    raw = os.environ.get("SKYCIV_REPORT_DIR", "")
+    return (PROJECT_ROOT / raw) if raw and not Path(raw).is_absolute() else (Path(raw) if raw else None)
+
+
 def safety_factor_threshold() -> float:
     load_env()
     return float(os.environ.get("SAFETY_FACTOR_THRESHOLD", "1.0"))

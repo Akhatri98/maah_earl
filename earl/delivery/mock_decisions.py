@@ -81,7 +81,8 @@ PSI_TO_PA = 6894.757
 KIP_TO_N = 4448.222
 
 E_ALUMINIUM = 1.0e7 * PSI_TO_PA          # 6.895e10 Pa
-ALLOWABLE_STRESS = 25_000 * PSI_TO_PA    # 1.7237e8 Pa -- member capacity
+YIELD_STRENGTH = 50_000 * PSI_TO_PA      # 3.4474e8 Pa -- Fy
+ALLOWABLE_STRESS = 25_000 * PSI_TO_PA    # 1.7237e8 Pa -- member capacity (Biject)
 DENSITY = 2768.0
 BENCHMARK_LOAD = 100.0 * KIP_TO_N        # 444_822 N
 
@@ -241,8 +242,9 @@ def mock_graph(
                 id="mat_al",
                 name="Benchmark aluminium (E = 10^7 psi)",
                 elastic_modulus=E_ALUMINIUM,
-                yield_strength=ALLOWABLE_STRESS,
+                yield_strength=YIELD_STRENGTH,
                 density=DENSITY,
+                allowable_stress=ALLOWABLE_STRESS,
             )
         ],
         sections=sections,

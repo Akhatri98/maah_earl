@@ -61,6 +61,24 @@ auto-merge and an ECN saying everything is fine.
 to run is not the same as a structure that failed a check, and collapsing them
 would let a crash read as a safety finding.
 
+## Changelog
+
+**0.2.0 — Sprint 4 (additive; every 0.1.0 payload still decodes).**
+
+| Field | Producer | Why |
+|---|---|---|
+| `Material.allowable_stress: float \| None` (+ `Material.design_stress` property) | both graph builders | The two tracks disagreed by exactly 2x about what belonged in `yield_strength` (25 ksi allowable vs 50 ksi yield). Now `yield_strength` means yield (SkyCiv, buckling) and Biject computes capacity from `design_stress` = the allowable when set, else yield. `DependencyGraph.validate()` rejects a non-positive allowable or one above yield. |
+| `Decision.source: OnshapeRef \| None` | `earl.pipeline.enrich_decision` | The ECN must name the branch the change was evaluated in; it lived only on the graph. |
+| `MemberResult.hops_from_change: int \| None`, `MemberResult.reached_via: EdgeKind \| None` | `earl.pipeline.enrich_decision` (from `walker.Reach`) | `is_affected` is a bare bool and on an indeterminate truss every member is affected; the ECN needs distance and edge kind. |
+
+Also documented on `MemberResult` (no field change): axial force and stress are
+tension-positive, and `capacity` is a **stress** (design stress, or Pcr/A when
+buckling governs) so `capacity / |stress_after| == safety_factor`.
+
+With these, rule 2 above holds literally: `build_ecn(decision)` with no graph
+and no walk produces a notice with the Onshape source and per-member
+provenance (`tests/test_pipeline.py::TestEnrichDecision`).
+
 ## Version policy
 
 `CONTRACT_VERSION` is stamped onto every payload as `schema_version`.
@@ -69,9 +87,12 @@ would let a crash read as a safety finding.
 - **Major** bump — breaking (renamed/removed field, changed meaning). Tell the
   other track before you push it.
 
-## Known open question
+## Formerly open question — resolved
 
-`EdgeKind` (`MATE`, `WHERE_USED`, `VARIABLE_REF`, `TOPOLOGY`, `LOAD_PATH`) is a
-first guess made **before** seeing real Onshape assembly data. Expect it to be
-amended in Sprint 1A/2A once the actual mate and where-used payloads are known.
-It is additive-only if the existing members keep their meaning.
+`EdgeKind` (`MATE`, `WHERE_USED`, `VARIABLE_REF`, `TOPOLOGY`, `LOAD_PATH`) was a
+first guess made before seeing real Onshape assembly data. Sprints 1A/2A kept
+all five: `graph_builder` emits `MATE` (from Onshape mates), `TOPOLOGY`
+(members sharing a node, derived from mate connectors) and `VARIABLE_REF`
+(from the changed variable to what it drives); Track B's demo graph emits
+`TOPOLOGY` and `LOAD_PATH`. `WHERE_USED` is emitted by `where_used_edges()` for
+documents with shared parts. No amendment was needed.

@@ -10,6 +10,27 @@ tracks.
 
 Gmail send is deliberately **not** built yet.
 
+---
+
+## Sprint 4 resolution (integration)
+
+Everything below was open when this was written. Status after the Sprint 4
+integration commit on `dev`:
+
+| Item | Resolution |
+|---|---|
+| **1. 2x capacity disagreement** | **Fixed, via the proposed contract change.** Contract 0.2.0 adds `Material.allowable_stress`; Biject computes capacity from `Material.design_stress` (allowable when set, else yield). Both builders, the Sprint 0 self-check and the Sprint 3A mock now emit yield = 50 ksi *and* allowable = 25 ksi; `tests/test_pipeline.py::TestBuildersAgree` pins that they agree and that the mock's frozen numbers (m5 SF 0.751 for m7 7.46 → 6.00) are what `run_fast_gate()` computes. Because the published optimum then sits *exactly* on the threshold (m5 SF 0.9999 by PyNite), Track B's demo structure is now the optimum with a uniform 10 % design margin (`DEMO_AREAS_IN2`), and the demo change is **m7 8.203 → 6.000 in²**: m5 SF 0.735 FAIL, m7 SF 1.107 PASS, rest ≥ 3.26. Solver validation still uses the exact optimum. |
+| **2. Cross-validation** | Unchanged; still agrees to five significant figures. |
+| **3. Per-member areas** | `build_ten_bar_graph()` and the demo use per-member sections. `graph_builder.build_graph()` still assigns one section to all members because the recorded Onshape document drives every bar from one `barArea` variable — that is the CAD model, not a builder limitation. `scripts/run_pipeline.py --onshape-fixture` runs that path as a `barArea` variable edit at 10-kip loads (a 1 in² truss is safe at 10 kips, not 100) and escalates on m1 and m3. |
+| **4. Which graph feeds Sprint 4** | `earl.pipeline.run_pipeline()` walks *whatever graph it is given* with Track A's walker (`walk_and_apply`) before the gate, so `affected_*` are always the fixed BFS result. Track B's `demo_change_graph()` now carries the full node-sharing topology (the same edge set `graph_builder.topology_edges()` derives), so it walks in rings exactly like an ingested graph — the earlier hand-written list also wrongly had m8 one hop from m7 (m8 is n6–n3). |
+| **5. Decision insufficient for the ECN** | **Fixed, via the proposed amendment.** `Decision.source`, `MemberResult.hops_from_change`, `MemberResult.reached_via` (contract 0.2.0), filled by `pipeline.enrich_decision()` from the graph and the walk. `build_ecn(decision)` alone now renders source and "1 hop via topology" provenance; the graph/walk remain optional enrichment (they add the full path). |
+| **6. Smaller things** | Docstrings updated. |
+| **Gmail** | Built: `earl/delivery/gmail.py` (`GmailSender` over the REST API with an injectable transport, `OutboxSender` writing the identical message as `.eml`), wired as the last pipeline stage. Escalations and errors are mailed by default; approvals are logged (`notify_on`). |
+
+Run it: `python3 scripts/run_pipeline.py` (offline demo), `--onshape-fixture`
+(Track A's real graph path), `--skyciv` / `--send` (live). 545 tests pass.
+
+
 ```
 .venv/Scripts/python.exe scripts/ecn_preview.py            # all 5 scenarios
 .venv/Scripts/python.exe scripts/ecn_preview.py escalated  # the demo one

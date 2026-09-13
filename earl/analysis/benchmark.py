@@ -32,9 +32,23 @@ What is validated, and against what:
     all-1.0 in^2, NOT a published value. It exists so a future change to the
     adapter that shifts a force is noticed, not so the numbers are trusted.
 
-The demo change (R1) is a FEATURE_EDIT thinning m7 from 7.457 in^2 to
-3.500 in^2 at the optimum. The truss is statically indeterminate, so the
-edited member survives (SF ~ 1.33) while its neighbour m5 fails (SF ~ 0.81) --
+Capacity convention (Sprint 4 agreement with Track A): the material carries
+BOTH numbers -- `yield_strength` = 50 ksi (nominal 2024-T3, what SkyCiv's
+design check and any buckling check want) and `allowable_stress` = 25 ksi
+(the benchmark's published allowable) -- and Biject computes capacity from
+the allowable. A member is therefore FAIL when it exceeds the allowable the
+literature designed it to, not when it yields.
+
+That puts the published optimum exactly on the threshold (m5 sits at 25.003
+ksi, SF 0.9999 by PyNite), which is correct for a stress-constrained optimum
+but useless as a "safe before-state". The DEMO structure is therefore the
+optimum with a uniform 10 % design margin (`DEMO_AREAS_IN2` = optimum x 1.10):
+m5 at SF 1.10, every other member higher. Solver VALIDATION still uses the
+exact published optimum.
+
+The demo change (R1) is a FEATURE_EDIT thinning m7 from 8.203 in^2 to
+6.000 in^2 on that design. The truss is statically indeterminate, so the
+edited member survives (SF ~ 1.11) while its neighbour m5 fails (SF ~ 0.73) --
 a real downstream domino, which is the narrative plan.md is built around.
 """
 
@@ -75,20 +89,25 @@ LBF = KIP / 1000.0          # lbf -> N
 # -- the published problem ---------------------------------------------------
 BAY_IN = 360.0
 E_KSI = 1.0e4                       # 6.894757e10 Pa
-YIELD_KSI = 50.0                    # nominal 2024-T3 yield; capacity, not the allowable
+YIELD_KSI = 50.0                    # nominal 2024-T3 yield -> Material.yield_strength
 DENSITY_LB_PER_IN3 = 0.1            # 2767.99 kg/m^3
-STRESS_LIMIT_KSI = 25.0             # the benchmark ALLOWABLE (published-optimum checks only)
+STRESS_LIMIT_KSI = 25.0             # the benchmark ALLOWABLE -> Material.allowable_stress (capacity)
 DISPLACEMENT_LIMIT_IN = 2.0
 PUBLISHED_OPTIMUM_WEIGHT_LB = 5060.85
 # Case 1 optimum, members m1..m10 (in^2).
 TEN_BAR_OPTIMUM_AREAS_IN2 = [30.52, 0.100, 23.20, 15.22, 0.100, 0.551, 7.457, 21.04, 21.53, 0.100]
+# The demo's as-designed structure: the optimum with a uniform 10 % design
+# margin, so the governing member starts at SF 1.10 rather than on the knife
+# edge of its active constraint (see the module docstring).
+DEMO_MARGIN = 1.10
+DEMO_AREAS_IN2 = [round(a * DEMO_MARGIN, 3) for a in TEN_BAR_OPTIMUM_AREAS_IN2]
 
 MATERIAL_ID = "mat_al"
 LOAD_CASE_ID = "lc_benchmark"
 BENCHMARK_GRAPH_ID = "graph-ten-bar"
 DEMO_MEMBER = "m7"
-DEMO_AREA_BEFORE_IN2 = 7.457
-DEMO_AREA_AFTER_IN2 = 3.500
+DEMO_AREA_BEFORE_IN2 = DEMO_AREAS_IN2[6]      # 8.203 in^2
+DEMO_AREA_AFTER_IN2 = 6.000
 
 NODE_COORDS_IN: dict[str, tuple[float, float]] = {
     "n1": (2 * BAY_IN, BAY_IN),
@@ -174,6 +193,7 @@ def build_ten_bar_graph(
         elastic_modulus=E_KSI * KSI,
         yield_strength=YIELD_KSI * KSI,
         density=DENSITY_LB_PER_IN3 * LB_PER_IN3,
+        allowable_stress=STRESS_LIMIT_KSI * KSI,
     )
     load_case = LoadCase(
         id=LOAD_CASE_ID,
@@ -209,36 +229,65 @@ def _demo_change() -> ChangeEvent:
     )
 
 
+def topology_edges() -> list[Edge]:
+    """TOPOLOGY edges between every pair of members sharing a node, both
+    directions -- the same edge set Track A's `graph_builder.topology_edges()`
+    derives from the Onshape mate connectors, so a walk over this graph
+    behaves exactly like a walk over a real ingested one: rings of 1 hop
+    (shares a node with the change) and 2 hops (the rest of the truss)."""
+    members_at: dict[str, list[str]] = {}
+    for mid, a, b in CONNECTIVITY:
+        members_at.setdefault(a, []).append(mid)
+        members_at.setdefault(b, []).append(mid)
+    edges: list[Edge] = []
+    seen: set[tuple[str, str]] = set()
+    for sharers in members_at.values():
+        ordered = sorted(sharers, key=MEMBER_IDS.index)
+        for i, a in enumerate(ordered):
+            for b in ordered[i + 1:]:
+                for pair in ((a, b), (b, a)):
+                    if pair not in seen:
+                        seen.add(pair)
+                        edges.append(Edge(pair[0], pair[1], EdgeKind.TOPOLOGY))
+    return edges
+
+
+# What the fixed walk from m7 reaches, and how far. Kept as constants so the
+# tests pin the expected traversal rather than recomputing it.
+DEMO_AFFECTED_MEMBER_IDS = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10"]
+DEMO_ONE_HOP_MEMBER_IDS = ["m1", "m3", "m4", "m5", "m10"]   # share n5 or n4 with m7 (+ m2 via load path)
+DEMO_TWO_HOP_MEMBER_IDS = ["m6", "m8", "m9"]
+
+
 def demo_change_graph() -> DependencyGraph:
-    """R1: the optimum with m7 (n5-n4) thinned to 3.500 in^2, with the
-    dependency edges a graph walk from m7 would produce: TOPOLOGY to every
-    member sharing n5 or n4, LOAD_PATH to the members that pick up its load.
-    Expected verdict: m5 FAIL (SF ~ 0.81), m7 PASS (SF ~ 1.33), rest PASS."""
-    areas = list(TEN_BAR_OPTIMUM_AREAS_IN2)
+    """R1: the demo design (optimum x 1.10) with m7 (n5-n4) thinned to
+    6.000 in^2. Edges are the full node-sharing TOPOLOGY set (as Track A's
+    graph builder emits) plus LOAD_PATH edges m7 -> m5 and m7 -> m2 for the
+    members that pick up its load. `affected_*` are what the fixed BFS from
+    m7 reaches -- every member, because a 10-bar truss is fully connected:
+    five at 1 hop (share n5 or n4), m2 at 1 hop via load path, m6, m8 and m9
+    at 2 hops.
+    Expected verdict: m5 FAIL (SF ~ 0.73), m7 PASS (SF ~ 1.11), rest PASS
+    (SF >= 3.2)."""
+    areas = list(DEMO_AREAS_IN2)
     areas[MEMBER_IDS.index(DEMO_MEMBER)] = DEMO_AREA_AFTER_IN2
     graph = build_ten_bar_graph(areas_in2=areas, graph_id="graph-demo-m7", change=_demo_change())
-    graph.edges = [
-        Edge(DEMO_MEMBER, "m1", EdgeKind.TOPOLOGY),    # share n5
-        Edge(DEMO_MEMBER, "m8", EdgeKind.TOPOLOGY),
-        Edge(DEMO_MEMBER, "m3", EdgeKind.TOPOLOGY),    # share n4
-        Edge(DEMO_MEMBER, "m4", EdgeKind.TOPOLOGY),
-        Edge(DEMO_MEMBER, "m5", EdgeKind.TOPOLOGY),
-        Edge(DEMO_MEMBER, "m10", EdgeKind.TOPOLOGY),
+    graph.edges = topology_edges() + [
         Edge(DEMO_MEMBER, "m5", EdgeKind.LOAD_PATH),
         Edge(DEMO_MEMBER, "m2", EdgeKind.LOAD_PATH),
     ]
-    graph.affected_member_ids = ["m7", "m1", "m8", "m3", "m4", "m5", "m10", "m2"]
-    graph.affected_node_ids = ["n4", "n5"]
+    graph.affected_member_ids = list(DEMO_AFFECTED_MEMBER_IDS)
+    graph.affected_node_ids = [nid for nid in NODE_COORDS_IN]
     return graph
 
 
 def demo_before_graph() -> DependencyGraph:
-    """The optimum, unchanged -- the before-state of `demo_change_graph()`.
+    """The demo design, unchanged -- the before-state of `demo_change_graph()`.
     Same node/member/load-case ids and the same ChangeEvent (it is the state
     that change is measured against), so stress_before lines up member for
-    member. stress_before(m5) ~ 25.003 ksi ~ 1.7239e8 Pa."""
+    member. stress_before(m5) ~ 22.73 ksi ~ 1.5672e8 Pa (SF 1.10)."""
     return build_ten_bar_graph(
-        areas_in2=list(TEN_BAR_OPTIMUM_AREAS_IN2),
+        areas_in2=list(DEMO_AREAS_IN2),
         graph_id="graph-demo-m7-before",
         change=_demo_change(),
     )

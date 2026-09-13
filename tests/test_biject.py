@@ -160,14 +160,14 @@ class TestDemoChange(unittest.TestCase):
     def test_m5_fails_with_expected_numbers(self):
         m5 = self.verdict.result("m5")
         self.assertIs(m5.status, MemberStatus.FAIL)
-        self.assertAlmostEqual(m5.safety_factor, 0.806, delta=0.806 * 1e-2)
-        self.assertAlmostEqual(abs(m5.stress_after) / KSI, 62.05, delta=62.05 * 1e-2)
+        self.assertAlmostEqual(m5.safety_factor, 0.735, delta=0.735 * 1e-2)
+        self.assertAlmostEqual(abs(m5.stress_after) / KSI, 34.03, delta=34.03 * 1e-2)
         self.assertTrue(m5.is_affected)
 
     def test_edited_member_m7_passes(self):
         m7 = self.verdict.result("m7")
         self.assertIs(m7.status, MemberStatus.PASS)
-        self.assertAlmostEqual(m7.safety_factor, 1.33, delta=1.33 * 1e-2)
+        self.assertAlmostEqual(m7.safety_factor, 1.107, delta=1.107 * 1e-2)
 
     def test_every_member_evaluated(self):
         self.assertEqual(
@@ -177,10 +177,14 @@ class TestDemoChange(unittest.TestCase):
         self.assertTrue(all(r.safety_factor is not None for r in self.verdict.member_results))
 
     def test_capacity_is_a_stress_and_reproduces_sf(self):
-        """R6: capacity (Pa) / |stress_after| == safety_factor."""
-        fy = self.graph.material("mat_al").yield_strength
+        """R6: capacity (Pa) / |stress_after| == safety_factor, and the
+        capacity is the declared ALLOWABLE, not the yield (Sprint 4)."""
+        mat = self.graph.material("mat_al")
+        fd = mat.design_stress
+        self.assertEqual(fd, mat.allowable_stress)
+        self.assertLess(fd, mat.yield_strength)
         for r in self.verdict.member_results:
-            self.assertAlmostEqual(r.capacity, fy)      # yield-governed, inertia absent
+            self.assertAlmostEqual(r.capacity, fd)      # allowable-governed, inertia absent
             self.assertAlmostEqual(r.capacity / abs(r.stress_after), r.safety_factor, places=9)
             self.assertAlmostEqual(r.utilization, 1.0 / r.safety_factor, places=12)
             self.assertIn(INERTIA_NOT_PROVIDED_NOTE, r.note)
@@ -194,7 +198,7 @@ class TestDemoChange(unittest.TestCase):
         before = solve(demo_before_graph(), LOAD_CASE_ID)
         verdict = evaluate(self.graph, self.result, THRESHOLD, before={LOAD_CASE_ID: before})
         m5 = verdict.result("m5")
-        self.assertAlmostEqual(m5.stress_before, 1.7239e8, delta=1.7239e8 * 1e-2)
+        self.assertAlmostEqual(m5.stress_before, 1.5671e8, delta=1.5671e8 * 1e-2)
         self.assertNotIn("no before-state", m5.note)
 
     def test_without_before_stress_before_is_none(self):
@@ -218,7 +222,9 @@ class TestOptimumApproved(unittest.TestCase):
         self.assertIs(verdict.outcome, Outcome.APPROVED)
         self.assertEqual(verdict.violating_member_ids, [])
         self.assertTrue(all(r.status is MemberStatus.PASS for r in verdict.member_results))
-        self.assertAlmostEqual(verdict.result("m5").safety_factor, 2.0, delta=2.0 * 1e-2)
+        # The demo design is the optimum x 1.10, so its governing member
+        # starts 10 % inside the allowable.
+        self.assertAlmostEqual(verdict.result("m5").safety_factor, 1.10, delta=1.10 * 1e-2)
 
 
 class TestZeroForce(unittest.TestCase):

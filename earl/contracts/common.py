@@ -13,7 +13,9 @@ from typing import Any, Type, TypeVar
 
 # Bump on ANY breaking change to either contract, and tell the other track.
 # Minor version = additive/backward-compatible. Major = breaking.
-CONTRACT_VERSION = "0.1.0"
+# 0.2.0 (Sprint 4, additive): Material.allowable_stress; Decision.source;
+# MemberResult.hops_from_change / reached_via.
+CONTRACT_VERSION = "0.2.0"
 
 T = TypeVar("T", bound="Serializable")
 
