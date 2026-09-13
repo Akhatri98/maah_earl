@@ -18,7 +18,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-from ..contracts.graph import Edge, EdgeKind
+from ..contracts.graph import EdgeKind
 
 
 # --------------------------------------------------------------------------
@@ -175,7 +175,16 @@ def parse_mates(assembly_or_features: dict[str, Any]) -> list[Mate]:
 # Dependency edges / "where used"
 # --------------------------------------------------------------------------
 
-def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> list[Edge]:
+@dataclass(frozen=True)
+class InstanceEdge:
+    """Ingestion-local IDs. Resolve through truss_map before producing a contract."""
+
+    source_id: str
+    target_id: str
+    kind: EdgeKind
+
+
+def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> list[InstanceEdge]:
     """Turn mates into dependency edges.
 
     A mate is undirected in CAD -- if A is fastened to B, a change to either
@@ -183,7 +192,7 @@ def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> li
     only one direction would make the downstream traversal miss real
     dependencies, which is precisely a dropped domino.
     """
-    edges: list[Edge] = []
+    edges: list[InstanceEdge] = []
     seen: set[tuple[str, str]] = set()
     for mate in mates:
         if mate.suppressed and not include_suppressed:
@@ -196,7 +205,7 @@ def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> li
                 for pair in ((a, b), (b, a)):
                     if pair not in seen:
                         seen.add(pair)
-                        edges.append(Edge(pair[0], pair[1], EdgeKind.MATE))
+                        edges.append(InstanceEdge(pair[0], pair[1], EdgeKind.MATE))
     return edges
 
 
@@ -230,18 +239,18 @@ def build_where_used(instances: Iterable[Instance]) -> WhereUsed:
     return wu
 
 
-def where_used_edges(instances: Iterable[Instance]) -> list[Edge]:
+def where_used_edges(instances: Iterable[Instance]) -> list[InstanceEdge]:
     """Edges between instances that share a source part.
 
     Two instances of the same part are coupled: changing the part changes both.
     """
     wu = build_where_used(instances)
-    edges: list[Edge] = []
+    edges: list[InstanceEdge] = []
     for siblings in wu.by_part.values():
         for i, a in enumerate(siblings):
             for b in siblings[i + 1:]:
-                edges.append(Edge(a, b, EdgeKind.WHERE_USED))
-                edges.append(Edge(b, a, EdgeKind.WHERE_USED))
+                edges.append(InstanceEdge(a, b, EdgeKind.WHERE_USED))
+                edges.append(InstanceEdge(b, a, EdgeKind.WHERE_USED))
     return edges
 
 

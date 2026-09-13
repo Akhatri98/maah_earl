@@ -86,3 +86,17 @@ class SkyCivConfig:
 def safety_factor_threshold() -> float:
     load_env()
     return float(os.environ.get("SAFETY_FACTOR_THRESHOLD", "1.0"))
+
+
+def hard_floor() -> float:
+    from math import isfinite
+    load_env()
+    value = float(os.environ.get("HARD_FLOOR", os.environ.get("SAFETY_FACTOR_THRESHOLD", "1.0")))
+    if not isfinite(value) or value < 1.0:
+        raise ValueError("HARD_FLOOR cannot be below 1.0")
+    return value
+
+
+def demo_mode() -> bool:
+    load_env()
+    return os.environ.get("DEMO_MODE", "true").strip().lower() not in ("false", "0", "no")

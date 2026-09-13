@@ -1,5 +1,10 @@
 # EARL shared contracts (Sprint 0)
 
+Onshape Simulation already supplies assembly FEA, automatically refreshed
+stress/displacement/factors of safety, and versioned simulations; SkyCiv
+already supplies analysis and reports. EARL adds an enforced gate, notification,
+and a decision record. Contract 0.2 supports that policy, not better physics.
+
 The agreed boundary between the two tracks. **Owned by neither track** — change
 it only by agreement, and bump `CONTRACT_VERSION` in `common.py` when you do.
 
@@ -16,7 +21,7 @@ Track A  <──[ Decision ]─────────  Track B
 Verify both at any time:
 
 ```
-.venv/Scripts/python.exe scripts/contract_selfcheck.py
+python scripts/contract_selfcheck.py
 ```
 
 ## The two design rules
@@ -49,13 +54,20 @@ what any model in the pipeline decided*. It raises on:
 - `APPROVED` while any member is below `safety_factor_threshold`
 - `violating_member_ids` disagreeing with the actual member results
 - a member marked `PASS` while below threshold
-- `ESCALATED` with no member below threshold (escalation needs a real number)
+- `ESCALATED` without a below-target member, cross-check disagreement, or a
+  `NOT_EVALUATED` member; `escalation_reason` identifies the evidence
 - `ERROR` with no `error_message`
 
 Call it at the boundary — on produce *and* on consume. It is deliberately cheap
 so there is no reason to skip it. This does not replace Biject; it is the
 backstop that stops a malformed verdict from travelling onward to become an
-auto-merge and an ECN saying everything is fine.
+an ECN saying everything is fine. No CAD merge or write implementation exists.
+
+`hard_floor` is at least 1.0; `design_target` defaults to 1.5 and comes from the
+Onshape variable table. A legacy threshold can tighten but never weaken these.
+Typed `ChangeEvent.apply()` creates the after-model from an unchanged before
+graph and checks the numeric before value. Conversions live in `earl/units.py`.
+Serialization validates top-level contracts on both produce and consume.
 
 `Outcome.ERROR` is distinct from `ESCALATED` on purpose: a solver that failed
 to run is not the same as a structure that failed a check, and collapsing them

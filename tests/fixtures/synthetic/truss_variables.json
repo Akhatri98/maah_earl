@@ -1,0 +1,38 @@
+[
+  {
+    "_comment": "SYNTHETIC demonstrator, not the benchmark validation load/section. Solid round sections 20 in^2, applied loads 20 kN. Values are SI.",
+    "variables": [
+      {
+        "type": "LENGTH",
+        "name": "bayWidth",
+        "expression": "360 in",
+        "value": 9.144
+      },
+      {
+        "type": "LENGTH",
+        "name": "bayHeight",
+        "expression": "360 in",
+        "value": 9.144
+      },
+      {
+        "type": "AREA",
+        "name": "barArea",
+        "expression": "20 in^2",
+        "value": 0.0129032
+      },
+      {
+        "type": "NUMBER",
+        "name": "safetyFactor",
+        "expression": "1.5",
+        "value": 1.5
+      },
+      {
+        "type": "FORCE",
+        "name": "pointLoad",
+        "expression": "20 kN",
+        "value": 20000
+      }
+    ]
+  }
+]
+

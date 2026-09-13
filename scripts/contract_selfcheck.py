@@ -39,17 +39,15 @@ from earl.contracts import (  # noqa: E402
     Section,
     SkyCivReport,
     SupportType,
+    TargetKind,
+    EscalationReason,
 )
 
 # -- 10-bar truss, converted to SI ------------------------------------------
 # Classic benchmark is stated in imperial (360 in bays, E = 1e7 psi, P = 100
 # kips). The project contract is SI, so it is converted once, here, rather
 # than being half-converted in two places later.
-IN = 0.0254            # in -> m
-E_STEEL = 6.895e10     # 1e7 psi -> Pa
-YIELD = 2.48e8         # ~36 ksi -> Pa
-AREA = 1.0 * IN**2     # 1 in^2 -> m^2
-P = 444_822.0          # 100 kips -> N
+from earl.units import IN, E_STEEL, YIELD, AREA, P, round_inertia
 
 
 def build_graph() -> DependencyGraph:
@@ -83,17 +81,23 @@ def build_graph() -> DependencyGraph:
             target_id="m5",
             value_before="1.0 in^2",
             value_after="0.4 in^2",
+            target_kind=TargetKind.MEMBER,
+            field_name="area",
+            numeric_before=AREA,
+            numeric_after=0.4 * AREA,
         ),
         source=OnshapeRef(
             document_id="74352477fea92ae1dadf61d6",
             workspace_id="7121b248aa290fdccdc1afa6",
             element_id="72f445c1fb5399de58418375",   # Assembly 1
-            branch_name="earl-eval-chg-001",
+            branch_name=None,
         ),
         nodes=nodes,
         members=members,
-        materials=[Material("mat_steel", "A36 Steel", E_STEEL, YIELD, density=7850.0)],
-        sections=[Section("sec_1in2", "1 in^2 bar", AREA)],
+        materials=[Material("mat_steel", "Illustrative benchmark material", E_STEEL, YIELD)],
+        sections=[Section("sec_1in2", "1 in^2 solid round bar", AREA,
+                          round_inertia(AREA), round_inertia(AREA),
+                          2 * round_inertia(AREA), shape="solid_round")],
         load_cases=[
             LoadCase(
                 id="lc_1",
@@ -152,6 +156,7 @@ def build_decision(graph: DependencyGraph) -> Decision:
         graph_id=graph.id,
         change_id=graph.change.id,
         outcome=Outcome.ESCALATED,
+        escalation_reason=EscalationReason.BELOW_HARD_FLOOR,
         change_description=graph.change.description,
         member_results=results,
         violating_member_ids=["m5"],

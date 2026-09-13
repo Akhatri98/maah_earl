@@ -115,7 +115,7 @@ class TestDecisionGuardrails(unittest.TestCase):
             self.decision.validate()
         self.assertIn("can never be auto-approved", str(ctx.exception))
 
-    def test_cannot_escalate_without_a_failing_member(self):
+    def test_cannot_escalate_without_evidence(self):
         for r in self.decision.member_results:
             r.safety_factor, r.status = 2.0, MemberStatus.PASS
         self.decision.violating_member_ids = []

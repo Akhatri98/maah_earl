@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "geometry_source": "scripts.contract_selfcheck.build_graph",
+  "instance_members": {
+    "Member_m1": "m1", "Member_m2": "m2", "Member_m3": "m3",
+    "Member_m4": "m4", "Member_m5": "m5", "Member_m6": "m6",
+    "Member_m7": "m7", "Member_m8": "m8", "Member_m9": "m9",
+    "Member_m10": "m10",
+    "Member m1 <1>": "m1", "Member m2 <1>": "m2"
+  },
+  "variables": {
+    "bayWidth": {"field": "x", "canonical_value_m": 9.144, "type": "LENGTH"},
+    "bayHeight": {"field": "y", "canonical_value_m": 9.144, "type": "LENGTH"},
+    "barArea": {"field": "area", "type": "AREA"},
+    "safetyFactor": {"field": "design_target", "type": "NUMBER"},
+    "pointLoad": {"field": "fy", "type": "FORCE"}
+  },
+  "section_shape": "solid_round",
+  "effective_length_factor": 1.0,
+  "note": "Topology and restraints come only from the canonical builder. Coordinates scale with the evaluated SI variable table. This is a declared CAD convention, not geometry inference."
+}

@@ -1,0 +1,302 @@
+{
+  "_comment": "SYNTHETIC demo data, not a live Onshape response. All ten declared instances reuse canonical topology from scripts/contract_selfcheck.py.",
+  "rootAssembly": {
+    "documentId": "synthetic-ten-bar",
+    "elementId": "synthetic-assembly",
+    "instances": [
+      {
+        "id": "MInst1",
+        "name": "Member_m1",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m1",
+        "suppressed": false
+      },
+      {
+        "id": "MInst2",
+        "name": "Member_m2",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m2",
+        "suppressed": false
+      },
+      {
+        "id": "MInst3",
+        "name": "Member_m3",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m3",
+        "suppressed": false
+      },
+      {
+        "id": "MInst4",
+        "name": "Member_m4",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m4",
+        "suppressed": false
+      },
+      {
+        "id": "MInst5",
+        "name": "Member_m5",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m5",
+        "suppressed": false
+      },
+      {
+        "id": "MInst6",
+        "name": "Member_m6",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m6",
+        "suppressed": false
+      },
+      {
+        "id": "MInst7",
+        "name": "Member_m7",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m7",
+        "suppressed": false
+      },
+      {
+        "id": "MInst8",
+        "name": "Member_m8",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m8",
+        "suppressed": false
+      },
+      {
+        "id": "MInst9",
+        "name": "Member_m9",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m9",
+        "suppressed": false
+      },
+      {
+        "id": "MInst10",
+        "name": "Member_m10",
+        "type": "Part",
+        "documentId": "synthetic-ten-bar",
+        "elementId": "synthetic-parts",
+        "partId": "part-m10",
+        "suppressed": false
+      }
+    ],
+    "features": [
+      {
+        "id": "mate1",
+        "featureId": "mate1",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 1",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst1"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate2",
+        "featureId": "mate2",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 2",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst2"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst3"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate3",
+        "featureId": "mate3",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 3",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst3"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst4"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate4",
+        "featureId": "mate4",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 4",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst4"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst5"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate5",
+        "featureId": "mate5",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 5",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst5"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst6"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate6",
+        "featureId": "mate6",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 6",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst6"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst7"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate7",
+        "featureId": "mate7",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 7",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst7"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst8"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate8",
+        "featureId": "mate8",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 8",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst8"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst9"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "mate9",
+        "featureId": "mate9",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Declared dependency 9",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            {
+              "matedOccurrence": [
+                "MInst9"
+              ]
+            },
+            {
+              "matedOccurrence": [
+                "MInst10"
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "subAssemblies": [],
+  "parts": []
+}
+

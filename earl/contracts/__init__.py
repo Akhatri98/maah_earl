@@ -11,6 +11,7 @@ from .common import CONTRACT_VERSION, SI_UNITS, Serializable, Units, UnitSystem
 from .decision import (
     CrossCheck,
     Decision,
+    EscalationReason,
     MemberResult,
     MemberStatus,
     Outcome,
@@ -31,6 +32,7 @@ from .graph import (
     PointLoad,
     Section,
     SupportType,
+    TargetKind,
 )
 
 __all__ = [
@@ -43,6 +45,7 @@ __all__ = [
     "DependencyGraph",
     "ChangeEvent",
     "ChangeKind",
+    "TargetKind",
     "Edge",
     "EdgeKind",
     "LoadCase",
@@ -56,6 +59,7 @@ __all__ = [
     # decision (Track B -> Track A)
     "Decision",
     "Outcome",
+    "EscalationReason",
     "MemberResult",
     "MemberStatus",
     "SanityChecks",

@@ -13,7 +13,7 @@ from typing import Any, Type, TypeVar
 
 # Bump on ANY breaking change to either contract, and tell the other track.
 # Minor version = additive/backward-compatible. Major = breaking.
-CONTRACT_VERSION = "0.1.0"
+CONTRACT_VERSION = "0.2.0"
 
 T = TypeVar("T", bound="Serializable")
 
@@ -48,7 +48,9 @@ class Units:
     area: str = "m^2"
 
     def assert_si(self) -> None:
-        if self.system is not UnitSystem.SI:
+        if (self.system is not UnitSystem.SI or
+                (self.length, self.force, self.stress, self.area) !=
+                ("m", "N", "Pa", "m^2")):
             raise ValueError(
                 f"expected SI units, payload declares {self.system.value}; "
                 "convert at the producer before handing the payload across tracks"
@@ -110,10 +112,13 @@ class Serializable:
     """
 
     def to_dict(self) -> dict[str, Any]:
+        validator = getattr(self, "validate", None)
+        if validator:
+            validator()
         return _encode(self)
 
     def to_json(self, *, indent: int | None = 2) -> str:
-        return json.dumps(self.to_dict(), indent=indent)
+        return json.dumps(self.to_dict(), indent=indent, allow_nan=False)
 
     @classmethod
     def from_dict(cls: Type[T], data: dict[str, Any]) -> T:
@@ -125,7 +130,11 @@ class Serializable:
         for f in fields(cls):  # type: ignore[arg-type]
             if f.name in data:
                 kwargs[f.name] = _decode(hints[f.name], data[f.name])
-        return cls(**kwargs)
+        obj = cls(**kwargs)
+        validator = getattr(obj, "validate", None)
+        if validator:
+            validator()
+        return obj
 
     @classmethod
     def from_json(cls: Type[T], raw: str) -> T:
