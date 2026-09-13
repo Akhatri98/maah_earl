@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable
 
 from ..contracts.graph import EdgeKind
+from ..units import evaluated_variable
 
 
 # --------------------------------------------------------------------------
@@ -30,8 +31,8 @@ class Variable:
     """One row of an Onshape variable table.
 
     `expression` is the authored text ("360 in"); `value` is Onshape's
-    evaluated number, which is always in METRES for a LENGTH variable
-    regardless of how the expression was written. Both are kept: the
+    evaluated value, normalized from numeric SI or a supported formatted unit
+    string. Authored expressions are never evaluated locally. Both are kept: the
     expression is what a human recognises in an ECN, the value is what the
     solver needs.
     """
@@ -53,12 +54,13 @@ def parse_variables(payload: Any) -> list[Variable]:
     out: list[Variable] = []
     for studio in payload or []:
         for v in studio.get("variables") or []:
+            kind, value = evaluated_variable(v.get("value"), v.get("type", ""))
             out.append(
                 Variable(
                     name=v.get("name", ""),
-                    type=v.get("type", ""),
+                    type=kind,
                     expression=v.get("expression", ""),
-                    value=_as_float(v.get("value")),
+                    value=value,
                     description=v.get("description") or "",
                 )
             )
@@ -208,7 +210,6 @@ def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> li
                         edges.append(InstanceEdge(pair[0], pair[1], EdgeKind.MATE))
     return edges
 
-
 @dataclass
 class WhereUsed:
     """Reverse index: which instances reference a given part/element.
@@ -252,10 +253,3 @@ def where_used_edges(instances: Iterable[Instance]) -> list[InstanceEdge]:
                 edges.append(InstanceEdge(a, b, EdgeKind.WHERE_USED))
                 edges.append(InstanceEdge(b, a, EdgeKind.WHERE_USED))
     return edges
-
-
-def _as_float(value: Any) -> float | None:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None

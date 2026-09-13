@@ -288,6 +288,8 @@ SOFTWARE.
       .agent-summary { padding: 12px 17px; border-right: 1px solid var(--line); }
       .agent-summary h2 { display: flex; justify-content: space-between; gap: 10px; }
       .agent-summary small { display: block; margin-top: 5px; overflow-wrap: anywhere; }
+      .agent-follow { display: flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 10px; }
+      .agent-follow input { margin: 0; accent-color: var(--green); }
       #agent-state { color: var(--muted); font: 10px var(--mono); }
       #agent-state[data-running="true"] { color: var(--green); }
       .agent-runs { padding: 9px 16px; min-width: 0; overflow-x: auto; }
@@ -1085,7 +1087,7 @@ SOFTWARE.
         color: var(--muted);
         flex: none;
       }
-      @media (min-width: 951px) and (max-height: 820px) {
+      @media (min-width: 951px) and (max-height: 924px) {
         .trace-detail {
           display: none;
         }
@@ -1227,7 +1229,7 @@ SOFTWARE.
         font-family: var(--mono);
         white-space: nowrap;
       }
-      @media (min-height: 880px) {
+      @media (min-height: 984px) {
         .controls {
           padding-top: 20px;
         }
@@ -1617,9 +1619,15 @@ SOFTWARE.
           transition: none !important;
         }
       }
+      @media (max-width: 620px) {
+        body.following-agent .viewer { order: 1; }
+        body.following-agent .run-panel { order: 2; }
+        body.following-agent .results { order: 3; }
+        body.following-agent .controls { order: 4; }
+      }
     </style>
   </head>
-  <body>
+  <body class="following-agent">
     <header class="topbar">
       <div class="brand">
         <svg class="brand-mark" viewBox="0 0 40 34" aria-hidden="true">
@@ -1664,6 +1672,7 @@ SOFTWARE.
         <h2 id="agent-title">Autonomous agent <span id="agent-state">IDLE</span></h2>
         <small id="agent-meta">No watcher heartbeat</small>
         <small id="agent-budget">API budget: not loaded</small>
+        <label class="agent-follow"><input type="checkbox" id="follow-agent" checked />Follow agent</label>
       </div>
       <div class="agent-runs" aria-live="polite">
         <p id="agent-empty">No autonomous runs recorded.</p>
@@ -1674,7 +1683,7 @@ SOFTWARE.
       <aside class="sidebar">
         <section class="controls" aria-labelledby="controls-title">
           <div class="section-heading">
-            <h2 id="controls-title">Change request</h2>
+            <h2 id="controls-title">Manual check</h2>
             <span class="number">01</span>
           </div>
           <div class="field preset-field">
@@ -2047,6 +2056,8 @@ SOFTWARE.
         source: null,
         total: 0,
         gated: false,
+        agentRunId: null,
+        agentStatus: null,
       };
       const stages = [
         "ingest",
@@ -2275,6 +2286,8 @@ SOFTWARE.
       }
       function startRun() {
         if (state.busy || $("run").disabled) return;
+        $("follow-agent").checked = false;
+        document.body.classList.remove("following-agent");
         const query = requestQuery();
         state.source?.close();
         setBusy(true);
@@ -2755,12 +2768,65 @@ SOFTWARE.
           if (evalResponse.ok) renderScoreboard(await evalResponse.json());
           else setText("eval-summary", "Cache unavailable");
           $("run").disabled = false;
-          startRun();
+          setText("verdict", "WAITING");
+          setText("reason", "No autonomous evaluation loaded.");
         } catch (error) {
           setText("control-error", error.message);
           setText("verdict", "ERROR");
           setText("reason", "The offline fixture could not be loaded.");
         }
+      }
+      async function showAgentRun(record) {
+        state.agentRunId = record.run_id;
+        setText("run-short", record.run_id.slice(0, 8));
+        state.source?.close();
+        state.decision = state.artifacts = state.beforeSolve = state.beforeCaps = null;
+        state.gated = false;
+        state.total = 0;
+        resetTrace();
+        setText("governing", "No evaluated governing member.");
+        setText("delivery-line", "Loading autonomous record.");
+        setText("artifact-provenance", "No final artifact loaded");
+        setText("report-reference", "Independent check: not loaded");
+        $("artifact-frame").hidden = true;
+        $("artifact-empty").hidden = false;
+        for (const id of ["download-email", "open-ecn", "trace-link", "report-link"]) {
+          $(id).removeAttribute("href");
+          $(id).setAttribute("aria-disabled", "true");
+        }
+        const response = await fetch(`/api/run/${record.run_id}/trace`, {cache: "no-store"});
+        if (!$("follow-agent").checked || state.busy) return;
+        if (!response.ok) {
+          renderTrusses();
+          renderTable();
+          connectionError(record.error || "Autonomous trace unavailable; no acceptance shown.");
+          return;
+        }
+        const events = (await response.text()).trim().split("\n").map(line => JSON.parse(line));
+        if (!$("follow-agent").checked || state.busy) return;
+        for (const event of events) consume(event);
+        const finalResponse = await fetch(`/api/run/${record.run_id}/decision`, {cache: "no-store"});
+        if (!$("follow-agent").checked || state.busy) return;
+        if (!finalResponse.ok) throw new Error("Final autonomous Decision unavailable");
+        const finalDecision = await finalResponse.json();
+        if (!$("follow-agent").checked || state.busy) return;
+        if (finalDecision.outcome !== record.outcome) {
+          state.decision = state.artifacts = null;
+          state.gated = false;
+          renderTrusses();
+          renderTable();
+          renderArtifacts();
+          setText("governing", "No final acceptance recorded.");
+          connectionError(record.error || "Autonomous finalization failed; pipeline result is not an acceptance.");
+          return;
+        }
+        state.decision = finalDecision;
+        renderVerdict();
+        updateMemberColors();
+        renderTable();
+        setText("trace-detail", `Autonomous run | ${record.provenance}`);
+        setText("delivery-line", `${record.notice || "Notice"}: ${record.notification_status}`);
+        state.agentStatus = record.notification_status;
       }
       async function refreshAgent() {
         try {
@@ -2771,7 +2837,9 @@ SOFTWARE.
           const records = (await runsResponse.json()).runs;
           setText("agent-state", status.state.toUpperCase());
           $("agent-state").dataset.running = String(status.running);
-          setText("agent-meta", `${status.mode || "Not started"} | ${status.run_count} runs | ${status.open_escalations} open`);
+          const triggerMode = status.effective_mode && status.effective_mode !== status.mode
+            ? `${status.mode} / fixture fallback` : status.mode || "Not started";
+          setText("agent-meta", `${triggerMode} | ${status.run_count} runs | ${status.open_escalations} open`);
           $("agent-meta").title = `${status.last_tick || "No tick"} | ${status.message}`;
           setText("agent-budget", `${status.remaining_api_calls} API calls left | ${status.undelivered} undelivered`);
           $("agent-empty").hidden = records.length > 0;
@@ -2785,6 +2853,13 @@ SOFTWARE.
               <td>${esc(run.source)}</td>
               <td><a href="/api/run/${esc(run.run_id)}/ecn" target="_blank" rel="noopener">ECN</a></td>
             </tr>`).join("");
+          if (records.length && state.base && $("follow-agent").checked && !state.busy) {
+            if (state.agentRunId !== records[0].run_id) await showAgentRun(records[0]);
+            else if (state.agentStatus !== records[0].notification_status) {
+              setText("delivery-line", `${records[0].notice || "Notice"}: ${records[0].notification_status}`);
+              state.agentStatus = records[0].notification_status;
+            }
+          }
         } catch (error) {
           setText("agent-state", "UNAVAILABLE");
           setText("agent-meta", error.message);
@@ -2810,6 +2885,10 @@ SOFTWARE.
       });
       $("parse").addEventListener("click", parseEdit);
       $("run").addEventListener("click", startRun);
+      $("follow-agent").addEventListener("change", () => {
+        state.agentRunId = null;
+        document.body.classList.toggle("following-agent", $("follow-agent").checked);
+      });
       for (const button of document.querySelectorAll("[data-view]"))
         button.addEventListener("click", () => {
           state.view = button.dataset.view;

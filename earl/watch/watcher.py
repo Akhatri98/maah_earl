@@ -73,6 +73,10 @@ class Watcher:
             line = f"ERROR {type(exc).__name__}: {str(exc)[:200]}"
             LOG.warning("Watcher tick: %s", line)
         with ledger.edit() as state:
+            effective = getattr(self.trigger, "effective_mode", self.trigger.mode)
+            state["effective_mode"] = effective
+            if effective != self.trigger.mode:
+                line = "FALLBACK fixture | " + line
             state["last_message"] = line
         print(f"{utcnow()} [{self.trigger.mode}] {line}", flush=True)
         return result
@@ -111,8 +115,13 @@ class FallbackTrigger:
     def __init__(self, primary, fixture):
         self.primary, self.fixture = primary, fixture
         self.mode = primary.mode
-        self.retry_at = 0
+        self.retry_key = primary.source_id + ":trigger_retry"
+        self.retry_at = primary.ledger.read()["cursors"].get(self.retry_key, 0)
         self.last_live = False
+
+    @property
+    def effective_mode(self):
+        return "fixture" if time.time() < self.retry_at else self.mode
 
     def next_change(self):
         if time.time() >= self.retry_at:
@@ -121,7 +130,11 @@ class FallbackTrigger:
                 self.last_live = True
                 return source, cursor
             except Exception as exc:
-                self.retry_at = time.time() + 3600
+                from .onshape import SnapshotMoved
+                delay = SnapshotMoved.retry_seconds if isinstance(exc, SnapshotMoved) else 3600
+                self.retry_at = time.time() + delay
+                with self.primary.ledger.edit() as state:
+                    state["cursors"][self.retry_key] = self.retry_at
                 self.last_live = False
                 return ChangeSource(source_id=self.primary.source_id, mode=self.primary.mode,
                                     scenario="live trigger unavailable", provenance="live trigger failed; fixture fallback enabled",

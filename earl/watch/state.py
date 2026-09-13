@@ -16,7 +16,7 @@ from pathlib import Path
 
 import fcntl
 
-from earl.config import PROJECT_ROOT
+from earl.config import PROJECT_ROOT, load_env
 
 
 def utcnow() -> str:
@@ -88,10 +88,16 @@ class Ledger:
     def status(self) -> dict:
         import time
         state = self.read()
-        budget = state["api_budget"]
+        load_env()
+        stored = state["api_budget"]
+        budget = {"year": stored["year"], "limit": int(os.environ.get("ONSHAPE_CALL_BUDGET", str(stored["limit"]))),
+                  "used": max(stored["used"], int(os.environ.get("ONSHAPE_CALLS_USED", "0")))}
+        if budget["limit"] < 0 or budget["used"] < 0:
+            raise RuntimeError("Invalid configured API budget")
         running = bool(state["running"] and state["lease_until"] > time.time())
         return {"state": "running" if running else "idle", "running": running,
                 "mode": state["mode"], "last_tick": state["last_tick"],
+                "effective_mode": state.get("effective_mode", state["mode"]),
                 "last_microversion": state["last_microversion"], "message": state["last_message"],
                 "remaining_api_calls": max(0, budget["limit"] - budget["used"]),
                 "api_budget": budget, "run_count": len(state["runs"]),

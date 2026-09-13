@@ -184,13 +184,18 @@ def create_report(graph: DependencyGraph, decision: Decision, run_dir: Path, *,
                                      timeout=(2, 8), allow_redirects=False)
             response.raise_for_status()
             recorded = {"model_fingerprint": fingerprint, "member_id": member.member_id, "raw_response": response.json()}
-            report, cross = parse_response(recorded, fingerprint=fingerprint, member_id=member.member_id,
-                                           pynite_force=member.axial_force_after, provenance="live SkyCiv API")
+            recording_error = False
+            # Preserve a real unexpected response shape for diagnosis before
+            # the strict parser rejects it. Invalid recordings never become evidence.
             try:
                 recording.parent.mkdir(parents=True, exist_ok=True)
                 recording.write_text(json.dumps(recorded, indent=2, allow_nan=False), encoding="utf-8")
             except (OSError, ValueError, TypeError) as exc:
-                LOG.warning("SkyCiv recording unavailable (%s); numerical cross-check retained", type(exc).__name__)
+                recording_error = True
+                LOG.warning("SkyCiv recording unavailable (%s)", type(exc).__name__)
+            report, cross = parse_response(recorded, fingerprint=fingerprint, member_id=member.member_id,
+                                           pynite_force=member.axial_force_after, provenance="live SkyCiv API")
+            if recording_error:
                 report.note += " Exact API response could not be recorded locally."
             try:
                 report_data = _function(recorded["raw_response"], "S3D.results.getAnalysisReport")

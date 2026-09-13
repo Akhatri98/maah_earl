@@ -33,16 +33,24 @@ structure and link its dimensions to the same variables; renaming arbitrary
 parts to these names does not make the analysis physically applicable.
 
 In the configured Variable Studio or Part Studio, expose these evaluated
-variables (Onshape responses supply SI values regardless of display units):
+variables. Request evaluated values, not just authored expressions. EARL
+normalizes numeric SI and supported unit-bearing values in its units module:
 
 | Name | Type | Demo value | Meaning |
 |---|---|---|---|
 | bayWidth | LENGTH | 9.144 m | Each of two bays |
 | bayHeight | LENGTH | 9.144 m | Truss height |
-| barArea | AREA | 20 in^2 | Default solid-round section |
+| barArea | ANY | 20 in^2 | Default solid-round section |
 | safetyFactor | NUMBER | 1.5 | Design target, never the hard floor |
-| pointLoad | FORCE | 20 kN | Each downward load; zero is allowed |
-| area_m1 ... area_m10 | AREA | Optional | Per-member override of barArea |
+| pointLoad | ANY | 20 kN | Each downward load; zero is allowed |
+| area_m1 ... area_m10 | ANY | Optional | Per-member override of barArea |
+
+Onshape's current variable type enum has `ANY`, not `AREA` or `FORCE`.
+The latter are EARL's normalized dimensions and legacy synthetic fixture types.
+For ANY, evaluated values must include recognized units: m^2, mm^2, in^2 for
+area; N, kN, lbf, kip for force. Length supports m, mm, in; meter/millimeter/inch
+spellings also work. Unknown units or unitless ANY values fail closed. EARL
+does not evaluate FeatureScript expressions or infer a missing physical unit.
 
 The first three variables are required. A per-member resize should change
 `area_m8` and the CAD section it drives together. Batch dimension/area/load
@@ -77,16 +85,23 @@ DEMO_MODE=false python -m earl watch --mode webhook --allow-live --register-webh
 Registration/ping callbacks return 200 without solving. The watcher consumes
 the durable queue and coalesces bursts; snapshot reads default to at most once
 per 60 seconds. First use verifies the current snapshot, not invented prior
-history. Later runs compare persisted and newly observed immutable snapshots.
+history. Later runs compare persisted and newly observed consistent snapshots.
 The API does not include a microversion in this event, so each consumed batch
 first reads `currentmicroversion`, then fetches assembly and variables only
-when changed. This verifies observed states, not every rapid intermediate edit.
+when changed. Assembly reads are pinned to that microversion. The variables
+endpoint only accepts workspace/version, not microversion: EARL requests
+`includeValuesAndReferencedVariables=true` at the workspace and rechecks its
+microversion afterward. A concurrent edit discards the snapshot as ERROR and
+retries after 60 seconds. This verifies observed states, not every rapid
+intermediate edit, and requires variables in the same configured document.
 
 Use `--list-webhooks` or `--unregister-webhook ID` with the same live flags for
 administration. Registrations are non-transient, checked once daily, and
 recreated if remotely removed; explicit unregister disables that renewal.
 Poll fallback defaults to six hours, with a one-hour minimum. Four checks/day
-alone cost 1460 calls/year; each changed snapshot needs two additional reads.
+alone cost 1460 calls/year; each changed snapshot needs three additional reads
+(assembly, variables, consistency check). Owner lookup and hook maintenance
+also spend budget, each cached/paced to once daily when needed.
 Missing credentials, unavailable APIs, or exhausted budget explicitly select
 offline fixture behavior. No fixture is labeled live or sent to a live owner.
 

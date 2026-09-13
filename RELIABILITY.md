@@ -75,8 +75,16 @@ calls are not visible locally. No annual automatic reset is invented because
 account allocation renewal dates differ. Exhaustion is shown in agent status.
 Poll defaults to six hours (minimum one hour), with pacing persisted across
 restart. Webhook snapshot batches are paced to 60 seconds by default. Both
-read only `currentmicroversion` first, then cache immutable assembly/variable
-snapshots; no full assembly fetch occurs on unchanged ticks.
+read only `currentmicroversion` first; no full assembly fetch occurs on unchanged
+ticks. Assembly reads are immutable `/m/` requests. The current variables API
+supports only workspace/version, not microversion. EARL requests evaluated
+values at the workspace and rechecks the microversion afterward; a concurrent
+edit discards the mixed snapshot as ERROR and retries after 60 seconds. A changed
+snapshot costs four calls before the optional cached owner lookup. Evaluated
+formatted values are converted once; Onshape ANY area/force values require
+recognized units. Legacy numeric SI fixtures remain supported. Unsupported
+units are not guessed from authored expressions. This consistency check assumes
+the variables belong to the configured document, not a changing external source.
 [Annual quota source](https://onshape-public.github.io/docs/auth/limits/).
 
 Contract 0.3 adds flat typed batches and explicit member restoration so a
@@ -91,7 +99,8 @@ See [Onshape setup](docs/ONSHAPE_SETUP.md) for exact CAD requirements.
 handshake, signature, budget, queue, pinned reads, batched diffs, and renewal
 are tested with mocks shaped from current documentation, not real callbacks.
 On unavailable live triggers, a separate fixture source remains usable and is
-never reported as live CAD evidence.
+never reported as live CAD evidence. Failure cooldown survives restart; status
+explicitly reports fixture fallback instead of claiming the live trigger works.
 
 ## Autonomous Delivery: Phase 3
 
@@ -130,6 +139,33 @@ Disk failure before MIME persistence prevents sending.
 was verified.** Tests exercise successful acknowledgments, absent credentials,
 connection failures, retry ordering/backoff/restart, and fixture isolation with
 mocked requests. The public demo saves local notices only.
+
+## Live Cross-Check: Phase 4
+
+The trusted watcher optionally calls SkyCiv after the unchanged local pipeline
+and before recording its final decision or choosing a notice. The unchanged
+Biject `attach_cross_check` applies disagreement as an escalation; its existing
+5% tolerance is not widened. The original pipeline trace is retained, while
+`agent-cross-check.json` records the final validated decision and provenance.
+Final ECN/MIME artifacts reflect that decision, not a stale pre-check approval.
+
+`scripts/skyciv_live_selfcheck.py --allow-live --record-fixture` is an explicit
+operator check. A real successful raw response is recorded before strict shape
+validation so an unexpected API response can be diagnosed, but a mismatched or
+invalid recording can never become accepted cross-check evidence. Export to a
+reusable fixture requires a validated live response. No fabricated response was
+added. With credentials absent here, the check returned **NOT VERIFIED LIVE**:
+`performed=false`, `agrees=null`, public example of a different model. No live
+numbers or real model disagreement were available to compare. The existing
+SkyCiv example remains plainly marked, not a truss cross-check. Tests verify
+disagreement escalation and invalid-response retention using mocks only.
+
+The browser autonomy check starts a real separate fixture watcher, changes its
+input file, and observes escalation, duplicate suppression and a cleared notice
+without any `/api/stream` request. The main truss, verdict and artifact now follow
+stored agent runs by default. Manual checks pause only that browser-follow view;
+they cannot start or stop the watcher. Desktop and mobile layouts are checked
+with Playwright, with screenshots and the request audit retained under `out/qa`.
 
 ## Baseline Protocol (Specified Before Evaluation)
 
@@ -438,10 +474,13 @@ For the existing dev machine, `python scripts/start_demo.py` launches the
 committed `astra` source and existing ngrok configuration, refusing occupied
 ports or dirty tracked source. It records process IDs and logs under
 `out/services/`, puts the launched commit in `/healthz`, and verifies the
-public endpoint reports that commit. The dev machine must remain awake and
-both processes must remain running. Credentials are never printed or committed.
+public endpoint reports that commit. It also starts a separate fixture watcher
+unless one already owns the ledger. The dev machine must remain awake, and
+server, watcher and tunnel must remain running. Credentials are never printed
+or committed.
 
-Public mode is always offline, even if an operator sets `DEMO_MODE=false`.
+Public manual-demo routes are always offline, even if an operator sets
+`DEMO_MODE=false`; the separate authenticated callback requires explicit enablement.
 Judge areas are clamped to 0.5-40 in^2 and loads to 0-150 kN. Member IDs and
 free load nodes are allowlisted; unsupported parameters are rejected. Two
 simultaneous runs are allowed, with a 12-second killable timeout per solve.
@@ -450,7 +489,8 @@ parsing; change text itself is limited to 2,000 characters.
 No public request can choose arbitrary geometry, files, URLs, or API tools.
 Every completed stage is appended to the local JSONL trace. If a browser
 disconnects mid-run, its stream may end before delivery; the UI reports ERROR
-and does not claim a completed acceptance record. There is no background run
-manager or durable queue, as required for this hackathon scope.
+and does not claim a completed acceptance record. Manual SSE runs have no
+background manager. Autonomous webhook events and notices have their own
+durable inbox/outbox, consumed only by the separately started trusted watcher.
 
 Reference for the overlap: [Onshape Simulation](https://www.onshape.com/en/features/simulation).

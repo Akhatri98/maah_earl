@@ -97,6 +97,12 @@ class Runner:
                     break
             decision = result.decision
             decision.validate()
+            if (self.allow_live and source.mode in ("poll", "webhook")
+                    and source.provenance.startswith("live Onshape")):
+                from .crosscheck import finalize
+                result = finalize(result, self.out_root, allow_live=True)
+                decision = result.decision
+                decision.validate()
             governing = decision.governing_member
             record = RunRecord(run_id, utcnow(), fingerprint, decision.outcome.value,
                                governing.member_id if governing else None,

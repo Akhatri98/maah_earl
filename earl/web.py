@@ -233,6 +233,14 @@ def decision(run_id: str):
     return JSONResponse(value.to_dict())
 
 
+@app.get("/api/run/{run_id}/agent-cross-check")
+def agent_cross_check(run_id: str):
+    path = _run_file(run_id, "agent-cross-check.json")
+    value = json.loads(path.read_text(encoding="utf-8"))
+    Decision.from_dict(value["decision"]).validate()
+    return JSONResponse(value)
+
+
 @app.get("/api/run/{run_id}/trace")
 def trace(run_id: str):
     path = _run_file(run_id, "", trace=True)

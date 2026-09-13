@@ -1,4 +1,4 @@
-"""Start a persistent local server and the existing ngrok tunnel on astra.
+"""Start a persistent local server, offline watcher, and ngrok tunnel on astra.
 
 This is a developer deployment command, not a public endpoint or model tool.
 It never reads or prints a tunnel credential. It refuses dirty tracked source
@@ -18,6 +18,9 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from earl.watch.state import Ledger
 
 
 def main():
@@ -28,6 +31,9 @@ def main():
         if subprocess.run(args, cwd=ROOT).returncode:
             raise SystemExit("Commit tracked source changes on astra before starting the deployment.")
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    agent = Ledger().status()
+    if agent["running"] and agent["mode"] != "fixture":
+        raise SystemExit("A non-fixture watcher owns the ledger; do not relabel it as a public demo.")
     for port in (8000, 4040):
         with socket.socket() as probe:
             if probe.connect_ex(("127.0.0.1", port)) == 0:
@@ -49,6 +55,7 @@ def main():
                                   stderr=subprocess.STDOUT, start_new_session=True)
     public_url = None
     ready = False
+    watcher = None
     try:
         for _ in range(30):
             if server.poll() is not None or tunnel.poll() is not None:
@@ -70,9 +77,22 @@ def main():
         public_health.raise_for_status()
         if public_health.json().get("build") != sha:
             raise RuntimeError("Public URL is not serving the astra commit just launched.")
+        if not Ledger().status()["running"]:
+            with (output / "watcher.log").open("ab") as log:
+                watcher = subprocess.Popen([sys.executable, "-m", "earl", "watch", "--mode", "fixture", "--interval", "2"],
+                                           cwd=ROOT, env=environment, stdin=subprocess.DEVNULL, stdout=log,
+                                           stderr=subprocess.STDOUT, start_new_session=True)
+            for _ in range(20):
+                if watcher.poll() is not None:
+                    raise RuntimeError("Fixture watcher stopped; inspect out/services/watcher.log")
+                if Ledger().status()["running"]:
+                    break
+                time.sleep(.2)
+            else:
+                raise RuntimeError("No watcher heartbeat after startup")
     except Exception as exc:
-        for process in (tunnel, server):
-            if process.poll() is None:
+        for process in (watcher, tunnel, server):
+            if process is not None and process.poll() is None:
                 process.terminate()
                 try:
                     process.wait(timeout=5)
@@ -81,7 +101,8 @@ def main():
                     process.wait()
         raise SystemExit(str(exc)) from exc
     record = {"branch": branch, "commit": sha, "url": public_url, "server_pid": server.pid, "tunnel_pid": tunnel.pid,
-              "note": "Temporary tunnel; this machine and both processes must remain running."}
+              "watcher_pid": watcher.pid if watcher else None,
+              "note": "Temporary tunnel; this machine, server, watcher and tunnel must remain running. Watcher is fixture-only."}
     (output / "deployment.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(record, indent=2))
 

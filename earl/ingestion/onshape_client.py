@@ -150,14 +150,14 @@ class OnshapeClient:
 
     # -- stage 1 reads -----------------------------------------------------
 
-    def get_variables(self, element_id: str, *, microversion: str | None = None) -> list[dict[str, Any]]:
-        """Variable table for a part studio.
+    def get_variables(self, element_id: str) -> list[dict[str, Any]]:
+        """Evaluated workspace variables. This endpoint supports w/v, NOT m.
 
-        This is the primary ingestion signal: a parametric change in EARL is
-        usually a variable-table value changing.
+        The live watcher brackets this read with currentmicroversion checks;
+        callers must not pretend a workspace response is an immutable read.
         """
-        location = self._dm(microversion) if microversion else self._dw()
-        return self._get(f"/api/variables/{location}/e/{element_id}/variables")
+        return self._get(f"/api/variables/{self._dw()}/e/{element_id}/variables",
+                         {"includeValuesAndReferencedVariables": "true"})
 
     def get_assembly_definition(
         self, element_id: str, *, include_mate_features: bool = True, microversion: str | None = None

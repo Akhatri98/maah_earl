@@ -18,7 +18,8 @@ displacement, factors of safety, automatically refreshed results, and versioned
 simulations. [SkyCiv](https://skyciv.com/api/) already provides structural
 analysis and reporting. EARL adds its numerical acceptance gate,
 notification policy, and per-change decision record on top; no Onshape merge
-or write capability is implemented.
+or CAD write capability is implemented. Webhook administration belongs only
+to the trusted watcher, never the model.
 
 ## Try It
 
@@ -41,7 +42,8 @@ credentials, and real sender/recipient addresses. Failed sends remain
 `UNDELIVERED` in a persistent outbox and retry with backoff; `.eml` is kept.
 No Gmail send was verified live in this build. Fixture events never send.
 
-Open the live demo, choose **Thin m8: 8 in^2**, and click **Run structural
+The dashboard follows autonomous runs by default. For an optional manual
+comparison, choose **Thin m8: 8 in^2**, and click **Run structural
 check**. The member becomes thinner, the pipeline streams its work, and Biject
 escalates at **SF 0.478**, below the hard floor of 1.0. The ECN, email preview,
 and raw trace are real generated artifacts. **Reinforce m1: 22 in^2** approves.
@@ -66,6 +68,8 @@ frontend build, or CAD account are required.
 
 ```mermaid
 flowchart LR
+    Watch[Fixture file / authenticated webhook / budgeted poll] --> Ledger[Durable agent ledger + snapshot cache]
+    Ledger --> CAD
     CAD[Read-only CAD / synthetic fixture] --> Map[Declared truss map + SI contract]
     Edit[Typed change / optional LLM interpretation] --> Models
     Map --> Models[Before + after models]
@@ -77,6 +81,9 @@ flowchart LR
     Report --> Recheck[Disagreement recheck]
     Recheck --> Record[ECN + .eml + JSONL trace]
     Record --> UI[CLI / FastAPI SSE / single HTML]
+    Record --> Dedup[Code-only incident / recovery policy]
+    Dedup --> Outbox[Persistent local / Gmail outbox + retries]
+    Outbox --> UI
 ```
 
 The model can interpret an edit, select a load case, and draft neutral prose.
@@ -114,6 +121,17 @@ example report of **a different model**, not an authenticated truss solve;
 the UI explicitly says the independent cross-check was **NOT PERFORMED**.
 Gmail is off and the saved `.eml` is the deliverable. Analysis is linear,
 axial-only, and not AISC/ASCE code-compliant design.
+
+The trusted watcher can request the existing SkyCiv cross-check before it
+classifies notifications. `scripts/skyciv_live_selfcheck.py --allow-live
+--record-fixture` verifies and records an actual response only with credentials
+and `DEMO_MODE=false`; otherwise it reports **NOT VERIFIED LIVE**. That is the
+result here. No real truss response or numerical agreement has been invented.
+
+`python scripts/agent_selfcheck.py --url http://127.0.0.1:8000` exercises saved
+file edits, duplicate suppression and recovery in a real browser with zero
+manual-run requests. The dashboard follows the agent by default; manual
+checks remain available but are not required for autonomous operation.
 
 [Dockerfile](Dockerfile) and [Render configuration](render.yaml) are provided,
 with Render explicitly selecting `astra`. The verified public deployment is

@@ -1,4 +1,4 @@
-"""Budgeted live triggers. Snapshot fetches are pinned to immutable microversions."""
+"""Budgeted triggers: immutable assembly plus consistency-checked variables."""
 
 from __future__ import annotations
 
@@ -14,6 +14,12 @@ from .state import Ledger
 
 DEFAULT_POLL_INTERVAL = 21600.0  # Four checks/day, 1460/year before any geometry reads.
 MIN_POLL_INTERVAL = 3600.0
+
+
+class SnapshotMoved(RuntimeError):
+    """Workspace changed while reading variables; never accept a mixed model."""
+
+    retry_seconds = 60
 
 
 class PollTrigger:
@@ -36,6 +42,8 @@ class PollTrigger:
 
     def read_changed_snapshot(self):
         microversion = self.client.current_microversion()
+        with self.ledger.edit() as state:
+            state["last_microversion"] = microversion
         stored = self.ledger.read()["snapshots"].get(self.source_id)
         if stored and stored["microversion"] == microversion:
             return None, None
@@ -44,8 +52,15 @@ class PollTrigger:
         if not assembly_id or not variable_id:
             raise ValueError("Set ONSHAPE_ASSEMBLY_ID and ONSHAPE_VARIABLE_ELEMENT_ID; no repeated discovery calls")
         assembly = self.client.get_assembly_definition(assembly_id, microversion=microversion)
-        variables = self.client.get_variables(variable_id, microversion=microversion)
-        after = map_assembly(assembly, variables, provenance="live Onshape immutable snapshot")
+        variables = self.client.get_variables(variable_id)
+        final_microversion = self.client.current_microversion()
+        if final_microversion != microversion:
+            self.pending_snapshot = None
+            with self.ledger.edit() as state:
+                state["last_microversion"] = final_microversion
+                state["cursors"][self.source_id + ":next_poll"] = time.time() + SnapshotMoved.retry_seconds
+            raise SnapshotMoved("Workspace moved during variable read; snapshot discarded, retry in 60 seconds")
+        after = map_assembly(assembly, variables, provenance="live Onshape consistency-checked snapshot")
         after.source.workspace_id = self.client.config.workspace_id
         after.source.version_id = microversion
         if after.mapping_warnings:

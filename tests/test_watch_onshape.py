@@ -25,7 +25,7 @@ from earl.ingestion.source import fixture_inputs
 from earl.ingestion.truss_map import map_assembly
 from earl.scenarios import make_change
 from earl.watch.changes import equal_physics, physical_model, snapshot_change
-from earl.watch.onshape import PollTrigger, WebhookTrigger
+from earl.watch.onshape import PollTrigger, WebhookTrigger, SnapshotMoved
 from earl.watch.runner import ChangeSource, Runner
 from earl.watch.state import Ledger
 from earl.watch.watcher import FallbackTrigger, FixtureTrigger, Watcher
@@ -93,16 +93,17 @@ class LiveTriggerTests(unittest.TestCase):
             change, cursor = trigger.next_change()
             trigger.acknowledge(cursor)
             self.assertIsNone(trigger.next_change()[0])
-            self.assertEqual(micro.call_count, 1)
+            self.assertEqual(micro.call_count, 2)
             self.assertIsNone(trigger.read_changed_snapshot()[0])
             self.assertEqual(assembly.call_count, 1)
             self.assertEqual(variables.call_count, 1)
+            variables.assert_called_once_with("d"*24)
             self.assertEqual(assembly.call_args.kwargs["microversion"], "e"*24)
             self.assertEqual(change.provenance, "live Onshape initial baseline verification (no prior history)")
         self.assertIn("assembly", self.ledger.read()["snapshots"][trigger.source_id])
 
     def test_live_mapping_failure_is_recorded_then_fixture_still_operates(self):
-        primary = Mock(mode="poll", source_id="onshape:test")
+        primary = Mock(mode="poll", source_id="onshape:test", ledger=self.ledger)
         primary.next_change.side_effect = ValueError("empty live document")
         fixture = FixtureTrigger(self.root / "edit.json", self.ledger)
         watcher = Watcher(FallbackTrigger(primary, fixture), Runner(self.ledger, out_root=self.root))
@@ -150,6 +151,34 @@ class LiveTriggerTests(unittest.TestCase):
             headers["x-onshape-webhook-timestamp"] = "0"
             self.assertFalse(authenticate(raw, headers, self.event()))
 
+    def test_webhook_worker_drains_inbox_and_unchanged_version_uses_only_cheap_read(self):
+        trigger = WebhookTrigger(self.client, self.ledger)
+        watcher = Watcher(trigger, Runner(self.ledger, out_root=self.root))
+        with self.ledger.edit() as state:
+            state["queue"].append({"documentId": "a"*24, "workspaceId": "b"*24, "messageId": "f"*24})
+        with patch.object(self.client, "current_microversion", return_value="e"*24) as micro, patch.object(self.client, "get_assembly_definition", return_value=self.source.assembly) as assembly, patch.object(self.client, "get_variables", return_value=self.source.variables), patch.object(self.client, "get_document", return_value={"owner": {}}):
+            self.assertEqual(watcher.tick().outcome, "approved")
+            self.assertEqual(self.ledger.read()["queue"], [])
+            with self.ledger.edit() as state:
+                state["cursors"][trigger.source_id + ":next_snapshot"] = 0
+                state["queue"].append({"documentId": "a"*24, "workspaceId": "b"*24, "messageId": "1"*24})
+            self.assertIsNone(watcher.tick())
+            self.assertEqual(micro.call_count, 3)
+            self.assertEqual(assembly.call_count, 1)
+            self.assertEqual(self.ledger.read()["queue"], [])
+            self.assertEqual(self.ledger.status()["last_microversion"], "e"*24)
+
+    def test_removed_managed_webhook_is_recreated_and_no_fictional_expiry_is_sent(self):
+        from earl.ingestion.onshape_client import OnshapeError
+        with self.ledger.edit() as state:
+            state["webhooks"]["e"*24] = {"managed": True, "desired": True, "next_check": 0,
+                                          "url": "https://example.org/api/webhook/onshape"}
+        with patch.object(self.client, "get_webhook", side_effect=OnshapeError(404, "gone", "test")), patch.object(self.client, "list_webhooks", return_value={"items": []}), patch.object(self.client, "register_webhook", return_value={"id": "1"*24, "isTransient": False}) as create:
+            maintain(self.client, self.ledger)
+        self.assertEqual(create.call_count, 1)
+        self.assertFalse(self.ledger.read()["webhooks"]["e"*24]["desired"])
+        self.assertTrue(self.ledger.read()["webhooks"]["1"*24]["desired"])
+
     def test_maintenance_renews_transient_registration_without_every_tick_calls(self):
         with self.ledger.edit() as state:
             state["webhooks"]["e"*24] = {"managed": True, "desired": True, "next_check": 0}
@@ -186,3 +215,44 @@ class LiveTriggerTests(unittest.TestCase):
         graph = map_assembly(assembly, variables)
         self.assertEqual(graph.section(graph.member("m8").section_id).area, .002)
         self.assertEqual(len(graph.members), 10)
+
+    def test_variables_request_evaluated_values_at_workspace_not_microversion(self):
+        with patch("requests.get", return_value=self.response(self.source.variables)) as get:
+            self.client.get_variables("d"*24)
+        self.assertIn("/w/" + "b"*24, get.call_args.args[0])
+        self.assertEqual(get.call_args.kwargs["params"], {"includeValuesAndReferencedVariables": "true"})
+
+    def test_evaluated_formatted_variables_map_units_without_expression_inference(self):
+        variables = [{"variables": [
+            {"name": "bayWidth", "type": "LENGTH", "value": "9144 mm", "expression": "do not parse me"},
+            {"name": "bayHeight", "type": "LENGTH", "value": "9.144 meter"},
+            {"name": "barArea", "type": "ANY", "value": "20 in^2"},
+            {"name": "pointLoad", "type": "ANY", "value": "20 kN"},
+            {"name": "area_m8", "type": "ANY", "value": "0.002 meter^2"},
+        ]}]
+        graph = map_assembly(self.source.assembly, variables)
+        self.assertAlmostEqual(graph.node("n1").x, 18.288)
+        self.assertEqual(graph.section(graph.member("m8").section_id).area, .002)
+        self.assertEqual(graph.load_cases[0].point_loads[0].fy, -20000)
+        variables[0]["variables"][2]["value"] = "20 kg"
+        with self.assertRaises(ValueError):
+            map_assembly(self.source.assembly, variables)
+        variables[0]["variables"][2]["value"] = "0.01"
+        with self.assertRaises(ValueError):
+            map_assembly(self.source.assembly, variables)
+
+    def test_workspace_race_discards_snapshot_and_persists_short_retry(self):
+        primary = PollTrigger(self.client, self.ledger)
+        fixture = FixtureTrigger(self.root / "edit.json", self.ledger)
+        trigger = FallbackTrigger(primary, fixture)
+        watcher = Watcher(trigger, Runner(self.ledger, out_root=self.root))
+        with patch.object(self.client, "current_microversion", side_effect=["e"*24, "f"*24]), patch.object(self.client, "get_assembly_definition", return_value=self.source.assembly), patch.object(self.client, "get_variables", return_value=self.source.variables), patch.object(self.client, "get_document") as owner:
+            result = watcher.tick()
+        self.assertEqual(result.outcome, "error")
+        self.assertEqual(self.ledger.read()["snapshots"], {})
+        self.assertEqual(self.ledger.status()["last_microversion"], "f"*24)
+        self.assertLessEqual(trigger.retry_at - time.time(), SnapshotMoved.retry_seconds)
+        owner.assert_not_called()
+        restarted = FallbackTrigger(primary, fixture)
+        self.assertEqual(restarted.retry_at, trigger.retry_at)
+        self.assertEqual(restarted.effective_mode, "fixture")
