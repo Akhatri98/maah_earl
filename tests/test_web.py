@@ -26,6 +26,7 @@ import socket
 import sys
 import threading
 import unittest
+import unittest.mock
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -441,6 +442,47 @@ class TestRunOverHttp(_ServerCase):
         self.assertEqual(status, 200)
         self.assertTrue(result["refused"])
         self.assertIn("below the floor 1.0", result["detail"])
+
+
+# ==========================================================================
+# The launcher
+# ==========================================================================
+
+class TestNgrokDiscovery(unittest.TestCase):
+    """`winget install` edits the PATH of shells started afterwards, which is
+    never the shell you installed from -- so "not on PATH" is the normal
+    first-run state. Finding the binary anyway is the difference between a
+    tunnel and five minutes of confusion in front of an audience."""
+
+    def setUp(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import serve  # noqa: PLC0415
+        self.serve = serve
+
+    def test_path_wins_when_it_has_one(self):
+        with unittest.mock.patch("shutil.which", return_value="/usr/bin/ngrok"):
+            self.assertEqual(self.serve.ngrok_binary(), "/usr/bin/ngrok")
+
+    def test_falls_back_to_an_installer_location(self):
+        fake = ROOT / "tests" / "fixtures" / "fake-ngrok.exe"
+        fake.parent.mkdir(parents=True, exist_ok=True)
+        fake.write_text("", encoding="utf-8")
+        try:
+            with unittest.mock.patch("shutil.which", return_value=None),                  unittest.mock.patch.object(self.serve, "NGROK_FALLBACKS", (fake,)):
+                self.assertEqual(self.serve.ngrok_binary(), str(fake))
+        finally:
+            fake.unlink()
+
+    def test_none_when_it_is_genuinely_absent(self):
+        missing = ROOT / "tests" / "fixtures" / "definitely-not-here.exe"
+        with unittest.mock.patch("shutil.which", return_value=None),              unittest.mock.patch.object(self.serve, "NGROK_FALLBACKS", (missing,)):
+            self.assertIsNone(self.serve.ngrok_binary())
+
+    def test_a_missing_binary_does_not_stop_the_server(self):
+        """`--ngrok` without ngrok must still serve locally. The tunnel is a
+        pipe, not a deployment mode."""
+        with unittest.mock.patch.object(self.serve, "ngrok_binary", return_value=None):
+            self.assertIsNone(self.serve.start_ngrok(8000))
 
 
 if __name__ == "__main__":

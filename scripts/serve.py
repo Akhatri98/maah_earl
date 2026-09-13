@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -44,8 +45,35 @@ from earl.config import load_env  # noqa: E402
 from earl.web.app import serve  # noqa: E402
 
 NGROK_API = "http://127.0.0.1:4040/api/tunnels"
-NGROK_WAIT_S = 15.0
+NGROK_WAIT_S = 20.0
 RULE = "=" * 78
+
+# Where a Windows package manager puts ngrok. `winget install` edits the PATH
+# of shells started AFTER it, which is never the shell you just installed
+# from -- so "ngrok is not on PATH" is the normal first-run state, not a
+# broken machine. Look in the obvious places before believing it.
+NGROK_FALLBACKS = (
+    Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Links" / "ngrok.exe",
+    Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft" / "WinGet" / "Packages"
+    / "Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe" / "ngrok.exe",
+    Path(os.environ.get("ProgramFiles", "")) / "ngrok" / "ngrok.exe",
+    Path("/usr/local/bin/ngrok"),
+    Path("/opt/homebrew/bin/ngrok"),
+)
+
+
+def ngrok_binary() -> str | None:
+    """The ngrok executable, from PATH or from where an installer left it."""
+    found = shutil.which("ngrok")
+    if found:
+        return found
+    for candidate in NGROK_FALLBACKS:
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError:
+            continue
+    return None
 
 
 # --------------------------------------------------------------------------
@@ -84,37 +112,63 @@ def start_ngrok(port: int) -> subprocess.Popen | None:
     over via `ngrok config add-authtoken`, which is where ngrok wants it. It
     is never printed, and it never appears in an argument we log.
     """
+    binary = ngrok_binary()
+    if binary is None:
+        print("  ngrok: no `ngrok` binary found.")
+        print("         Install it -- `winget install Ngrok.Ngrok` on Windows,")
+        print("         `brew install ngrok` on a Mac, or https://ngrok.com/download.")
+        return None
+
     token = os.environ.get("NGROK_AUTHTOKEN", "").strip()
     if token:
         try:
             subprocess.run(
-                ["ngrok", "config", "add-authtoken", token],
+                [binary, "config", "add-authtoken", token],
                 check=True,
                 capture_output=True,
                 text=True,
             )
-        except FileNotFoundError:
-            print("  ngrok: the `ngrok` binary is not on PATH.")
-            print("         Install it from https://ngrok.com/download, then re-run.")
-            return None
         except subprocess.CalledProcessError as e:
+            first = (e.stderr or e.stdout or "").strip().splitlines()
             print(f"  ngrok: could not store the auth token ({e.returncode}).")
-            print(f"         {(e.stderr or '').strip().splitlines()[:1]}")
+            if first:
+                print(f"         {first[0]}")
             return None
     else:
         print("  ngrok: NGROK_AUTHTOKEN is not set; trying an anonymous tunnel.")
 
-    try:
-        process = subprocess.Popen(
-            ["ngrok", "http", str(port), "--log", "stdout"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except FileNotFoundError:
-        print("  ngrok: the `ngrok` binary is not on PATH.")
-        print("         Install it from https://ngrok.com/download, then re-run.")
-        return None
+    # The agent's own log is kept, not discarded. The one failure that
+    # actually happens -- ERR_NGROK_121, an agent too old for the account --
+    # is invisible without it, and "the tunnel just did not come up" is a
+    # miserable thing to debug in front of an audience.
+    log = subprocess.PIPE
+    process = subprocess.Popen(
+        [binary, "http", str(port), "--log", "stdout", "--log-format", "logfmt"],
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        text=True,
+        errors="replace",
+    )
+    threading.Thread(target=_drain_ngrok, args=(process,), daemon=True).start()
     return process
+
+
+def _drain_ngrok(process: subprocess.Popen) -> None:
+    """Read the agent's log, and surface the lines a human needs.
+
+    Everything else is dropped: the agent is chatty and the demo console
+    belongs to the request log.
+    """
+    if process.stdout is None:
+        return
+    for line in process.stdout:
+        lowered = line.lower()
+        if "lvl=eror" in lowered or "lvl=crit" in lowered:
+            message = line.split("err=", 1)[-1].strip().strip('"')
+            print(f"  ngrok: {message[:300]}")
+            if "ERR_NGROK_121" in line:
+                print("         Fix: `ngrok update` (the agent is older than your "
+                      "account allows).")
 
 
 # --------------------------------------------------------------------------
