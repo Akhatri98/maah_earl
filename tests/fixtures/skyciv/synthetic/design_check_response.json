@@ -1,0 +1,61 @@
+{
+  "_comment": "HAND-BUILT to a plausible SkyCiv v3 response shape for S3D.design.member.check, NOT recorded. Call-2 response: per-member design ratio + pass flag keyed by SkyCiv member id, listed under 'results' (parse_design_results also accepts a flat dict or a list). Ratios are illustrative.",
+  "response": {
+    "status": 0,
+    "msg": "All functions executed",
+    "data": ""
+  },
+  "functions": [
+    {
+      "function": "S3D.design.member.check",
+      "status": 0,
+      "msg": "Design check complete",
+      "data": {
+        "design_code": "AISC_360-16_LRFD",
+        "results": {
+          "1": {
+            "ratio": 0.72,
+            "pass": true
+          },
+          "2": {
+            "ratio": 0.15,
+            "pass": true
+          },
+          "3": {
+            "ratio": 0.8,
+            "pass": true
+          },
+          "4": {
+            "ratio": 0.22,
+            "pass": true
+          },
+          "5": {
+            "ratio": 0.13,
+            "pass": true
+          },
+          "6": {
+            "ratio": 0.15,
+            "pass": true
+          },
+          "7": {
+            "ratio": 0.55,
+            "pass": true
+          },
+          "8": {
+            "ratio": 0.51,
+            "pass": true
+          },
+          "9": {
+            "ratio": 0.31,
+            "pass": true
+          },
+          "10": {
+            "ratio": 0.21,
+            "pass": true
+          }
+        }
+      }
+    }
+  ],
+  "last_session_id": "sess-synthetic-0001"
+}

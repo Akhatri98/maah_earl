@@ -1,0 +1,35 @@
+{
+  "_comment": "HAND-BUILT, NOT recorded. Call-1 response in which S3D.model.solve reports a non-zero status (the mandatory-function failure path). session.start and model.set succeed.",
+  "response": {
+    "status": 1,
+    "msg": "One or more functions failed",
+    "data": ""
+  },
+  "functions": [
+    {
+      "function": "S3D.session.start",
+      "status": 0,
+      "msg": "Session started",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.set",
+      "status": 0,
+      "msg": "Model set",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.solve",
+      "status": 1,
+      "msg": "Model is unstable: mechanism detected",
+      "data": ""
+    },
+    {
+      "function": "S3D.results.getReport",
+      "status": 1,
+      "msg": "No results to report",
+      "data": ""
+    }
+  ],
+  "last_session_id": "sess-synthetic-0003"
+}

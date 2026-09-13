@@ -1,0 +1,65 @@
+{
+  "_comment": "HAND-BUILT, NOT recorded. Variant of solve_response.json whose S3D.model.solve data is a LIST of per-combination objects rather than a dict keyed by combination id, with member_forces only (no member_stresses). Same 10-bar kN values.",
+  "response": {
+    "status": 0,
+    "msg": "All functions executed",
+    "data": ""
+  },
+  "functions": [
+    {
+      "function": "S3D.session.start",
+      "status": 0,
+      "msg": "Session started",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.set",
+      "status": 0,
+      "msg": "Model set",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.solve",
+      "status": 0,
+      "msg": "Model solved",
+      "data": [
+        {
+          "name": "lc_1",
+          "member_forces": {
+            "1": {
+              "axial": 869.0268
+            },
+            "2": {
+              "axial": 178.4832
+            },
+            "3": {
+              "axial": -910.2619
+            },
+            "4": {
+              "axial": -266.3389
+            },
+            "5": {
+              "axial": 157.8657
+            },
+            "6": {
+              "axial": 178.4832
+            },
+            "7": {
+              "axial": 658.2312
+            },
+            "8": {
+              "axial": -599.9159
+            },
+            "9": {
+              "axial": 376.6601
+            },
+            "10": {
+              "axial": -252.4134
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "session_id": "sess-synthetic-0002"
+}

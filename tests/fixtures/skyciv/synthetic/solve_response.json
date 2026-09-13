@@ -1,0 +1,301 @@
+{
+  "_comment": "HAND-BUILT to the documented SkyCiv v3 response shape, NOT recorded from the live API. Call-1 response for the 10-bar truss (all members 1 in^2 = 645.16 mm^2). member_forces axial values are the PyNite equal-area forces (tests/\u2026 benchmark regression pin) in kN, tension positive; member_stresses axial in MPa. Deliberately mixes the axial shapes R15 tolerates: [position, value] pairs (m1,m3,m5,m7), scalar (m2,m4,m9), flat list (m6), dict position->value (m8,m10), and both str and int member keys. Results are keyed by load-combination id ('1').",
+  "response": {
+    "status": 0,
+    "msg": "All functions executed",
+    "data": ""
+  },
+  "functions": [
+    {
+      "function": "S3D.session.start",
+      "status": 0,
+      "msg": "Session started",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.set",
+      "status": 0,
+      "msg": "Model set",
+      "data": ""
+    },
+    {
+      "function": "S3D.model.solve",
+      "status": 0,
+      "msg": "Model solved",
+      "data": {
+        "1": {
+          "name": "lc_1",
+          "member_forces": {
+            "1": {
+              "axial": [
+                [
+                  0,
+                  869.0268
+                ],
+                [
+                  50,
+                  869.0268
+                ],
+                [
+                  100,
+                  869.0268
+                ]
+              ],
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "2": {
+              "axial": 178.4832,
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "3": {
+              "axial": [
+                [
+                  0,
+                  -910.2619
+                ],
+                [
+                  50,
+                  -910.2619
+                ],
+                [
+                  100,
+                  -910.2619
+                ]
+              ],
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "4": {
+              "axial": -266.3389,
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "5": {
+              "axial": [
+                [
+                  0,
+                  157.8657
+                ],
+                [
+                  50,
+                  157.8657
+                ],
+                [
+                  100,
+                  157.8657
+                ]
+              ],
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "6": {
+              "axial": [
+                178.4832,
+                178.4832
+              ],
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "7": {
+              "axial": [
+                [
+                  0,
+                  658.2312
+                ],
+                [
+                  50,
+                  658.2312
+                ],
+                [
+                  100,
+                  658.2312
+                ]
+              ],
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "8": {
+              "axial": {
+                "0": -599.9159,
+                "50": -599.9159,
+                "100": -599.9159
+              },
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "9": {
+              "axial": 376.6601,
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            },
+            "10": {
+              "axial": {
+                "0": -252.4134,
+                "50": -252.4134,
+                "100": -252.4134
+              },
+              "shear_y": 0.0,
+              "shear_z": 0.0,
+              "moment_y": 0.0,
+              "moment_z": 0.0,
+              "torsion": 0.0
+            }
+          },
+          "member_stresses": {
+            "1": {
+              "axial": 1346.9942,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "2": {
+              "axial": 276.6495,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "3": {
+              "axial": -1410.9088,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "4": {
+              "axial": -412.8261,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "5": {
+              "axial": 244.6923,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "6": {
+              "axial": 276.6495,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "7": {
+              "axial": 1020.2604,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "8": {
+              "axial": -929.8715,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "9": {
+              "axial": 583.8243,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            },
+            "10": {
+              "axial": -391.2416,
+              "bending_y": 0.0,
+              "bending_z": 0.0
+            }
+          },
+          "reactions": {
+            "5": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            },
+            "6": {
+              "x": 0.0,
+              "y": 0.0,
+              "z": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "function": "S3D.results.getReport",
+      "status": 0,
+      "msg": "Report generated",
+      "data": {
+        "file_type": "pdf",
+        "download_link": "https://platform.skyciv.com/reports/synthetic-0001.pdf"
+      }
+    },
+    {
+      "function": "S3D.design.member.getInput",
+      "status": 0,
+      "msg": "Design input generated",
+      "data": {
+        "design_code": "AISC_360-16_LRFD",
+        "members": {
+          "1": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "2": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "3": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "4": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "5": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "6": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "7": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "8": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "9": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          },
+          "10": {
+            "Lb": 1.0,
+            "Cb": 1.0
+          }
+        }
+      }
+    }
+  ],
+  "last_session_id": "sess-synthetic-0001"
+}
