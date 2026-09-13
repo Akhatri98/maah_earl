@@ -3,6 +3,19 @@
 Multi-App AI Agent Hackathon by Lemma. See `Plan/plan.md` for the pitch and
 `Plan/sprint_timeline.md` for how the work was split.
 
+| | |
+|---|---|
+| **Two-minute demo** | _<!-- paste the video link here -->_ |
+| **Live site** | `python3 scripts/serve.py --ngrok` — see [The site](#the-site) |
+| **Tests** | 805, all offline: `python3 -m unittest discover -s tests -t . -q` |
+
+## Project overview
+
+An engineer changes one dimension in a CAD assembly. The parts that break are
+usually *not* the parts they touched — a 10-bar truss is statically
+indeterminate, so thinning one member pushes its load into members nobody
+edited. Today that gets caught in review, or it doesn't.
+
 EARL watches a CAD change in Onshape, walks every member downstream of it,
 runs a real structural solve (PyNite) behind a code-enforced safety threshold
 (Biject), has SkyCiv produce the trusted report when something fails, and
@@ -20,7 +33,25 @@ Onshape change ─▶ DependencyGraph ─▶ walker ─▶ PyNite + Biject ─�
                               ECN ─▶ Gmail / outbox (earl.delivery)   (earl.pipeline wires it)
 ```
 
-## Run it
+## External apps used
+
+| App | What EARL does with it | Where |
+|---|---|---|
+| **Onshape** | Reads the CAD change — variable-table edits, feature edits, mate structure and "where used" — and builds the dependency graph. Evaluates on a branch, never on Main. | `earl/ingestion/` |
+| **SkyCiv** | Produces the independent, trusted structural report when a change is escalated, and gets cross-checked against our own solver. | `earl/artifacts/` |
+| **Gmail** | Delivers the Engineering Change Notice to the engineer, with the truss picture attached. | `earl/delivery/` |
+| **Meta Muse** | The LLM behind stage-2 orchestration and behind the baseline agent in our eval. One provider for every model call, baseline included. | `earl/analysis/orchestrator.py`, `earl/eval/` |
+| **PyNite** | The FEA solver behind the fast gate, validated against the published 10-bar truss benchmark. | `earl/analysis/` |
+| **ngrok** | Tunnels the demo site so judges can drive it. | `scripts/serve.py` |
+
+**Two honest notes.** SkyCiv's free tier caps a model at 5 members and our
+truss has 10, so Stage 3 reaches the solver and stops at an account limit; the
+ECN and the demo both say so rather than citing a report nobody can open. And
+Gmail credentials are not in this repo, so `--send` needs your own — without
+it the message is written to `artifacts/demo/outbox/*.eml`, byte for byte what
+Gmail would receive.
+
+## Setup
 
 ```bash
 python3 -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
@@ -42,8 +73,8 @@ python3 scripts/validate_solver.py                   # PyNite vs the published 1
 python3 scripts/contract_selfcheck.py                # the shared contracts and their guardrails
 ```
 
-Without `--send` the e-mail is written to `artifacts/demo/outbox/*.eml`, byte
-for byte what Gmail would receive.
+Everything above runs with an empty `.env`. Credentials are only needed for
+the lines that say so. `.env.example` lists every key with the values blank.
 
 ## The site
 
@@ -94,6 +125,43 @@ domino the project exists to catch.
   stress. See `earl/contracts/README.md`.
 - **The threshold floor is code.** `SAFETY_FACTOR_THRESHOLD` in `.env` can only
   raise the bar above 1.0; a value below it raises before anything is solved.
+
+## How we tested reliability
+
+Four layers, because "it worked when I ran it" is not a reliability claim.
+
+**1. The solver is validated against published numbers.**
+`scripts/validate_solver.py` checks PyNite against the 10-bar truss benchmark
+(Haftka & Gürdal / Rajan) — member stresses, displacements and the optimum
+weight, at a stated tolerance. Every downstream number rests on that, so it is
+checked first and independently.
+
+**2. 805 offline tests.** `python3 -m unittest discover -s tests -t . -q`. No
+network, no credentials, no model calls — recorded fixtures throughout, so the
+suite means the same thing on a clean clone. It covers the contracts and their
+guardrails, both graph builders, the walker, the solver, the threshold logic,
+the ECN renderers, the SkyCiv payload, the eval harness and the web app.
+
+**3. A 20-scenario eval with computed ground truth.**
+`scripts/run_eval.py` parametrically perturbs the validated truss — resize,
+remove, add a load, move a load, edit a variable. Ground truth is **computed**
+by the validated solver on every run, never written down; eleven scenarios are
+unsafe, nine are safe, and in ten of the eleven the member that fails is not
+the one the change names. The metric is the *dropped domino*: a truth-unsafe
+member an agent failed to report. Each agent gets its own build of each
+scenario so the system's traversal cannot leak to the baseline, and an agent
+that crashes is scored as silence rather than skipped.
+
+**4. Repeat runs, to catch nondeterminism.** Three repeats of all twenty
+scenarios for both agents — 60 runs each. Reported below, including the part
+that went against us.
+
+The result is in [The number](#the-number). We also ran the whole demo end to
+end as a dry run, which caught two things 760 green tests had not: SkyCiv had
+never actually worked live (every payload was rejected — a truss section
+carries area only, so `Iy` was zero, and one of our own tests was asserting
+that broken behaviour), and the Gmail credentials were empty. Both are fixed
+or stated plainly; see `Plan/sprint_timeline.md`, Sprint 6.
 
 ## The number
 
