@@ -116,11 +116,19 @@ def _report_failed(run: SkyCivRun) -> bool:
 
 
 def retry_report_alt(client: SkyCivClient, graph: DependencyGraph, load_case_id: str,
-                     run: SkyCivRun) -> str | None:
-    """FN_REPORT failed: try FN_REPORT_ALT. Re-uses the open session when
-    call 1 kept one, else re-sets and re-solves the model in the same call."""
+                     run: SkyCivRun, *, session_open: bool) -> str | None:
+    """FN_REPORT failed: try FN_REPORT_ALT.
+
+    `session_open` says whether call 1 asked SkyCiv to keep its session open
+    (SkyCivClient.analyze does so only when a design check was requested).
+    A session started with keep_open=False is gone once call 1 returns, even
+    though its id is still in `run.session_id`, so the report can only be
+    re-used from a session that is BOTH open and known; otherwise the model
+    is set and solved again in the same call, which is one extra metered
+    call rather than a guaranteed "session not found"."""
     functions: list[dict[str, Any]] = []
-    if run.session_id is None:
+    reuse = session_open and run.session_id is not None
+    if not reuse:
         s3d = build_s3d_model(graph, load_case_id)
         functions += [
             {"function": FN_SESSION_START, "arguments": {"keep_open": False}},
@@ -128,7 +136,8 @@ def retry_report_alt(client: SkyCivClient, graph: DependencyGraph, load_case_id:
             {"function": FN_MODEL_SOLVE, "arguments": {"analysis_type": "linear", "repair_model": True}},
         ]
     functions.append({"function": FN_REPORT_ALT, "arguments": {"file_type": REPORT_FILE_TYPE}})
-    raw = client.call(functions, label=RECORD_SLUG_REPORT_ALT, session_id=run.session_id)
+    raw = client.call(functions, label=RECORD_SLUG_REPORT_ALT,
+                      session_id=run.session_id if reuse else None)
     run.raw["report_alt"] = raw
     print(f"\n-- {FN_REPORT_ALT} response --")
     for line in _function_summary(raw):
@@ -170,6 +179,9 @@ def print_force_table(graph: DependencyGraph, load_case_id: str, run: SkyCivRun)
 
 
 def main(argv: list[str] | None = None) -> int:
+    # .env first: the --report-dir default below reads SKYCIV_REPORT_DIR, and
+    # a value that only lives in .env would otherwise be invisible to argparse.
+    load_env()
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--graph", help="DependencyGraph JSON (default: the equal-area 10-bar truss)")
     parser.add_argument("--load-case", default=None, help="load case id (default: the graph's first)")
@@ -181,11 +193,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-report", action="store_true", help="do not request the PDF report")
     parser.add_argument("--no-report-alt", action="store_true",
                         help=f"do not retry with {FN_REPORT_ALT} when {FN_REPORT} fails")
-    parser.add_argument("--report-dir", default=os.environ.get("SKYCIV_REPORT_DIR") or None,
+    parser.add_argument("--report-dir", default=None,
                         help="download the report PDF here (default: SKYCIV_REPORT_DIR, else no download)")
     args = parser.parse_args(argv)
+    if args.report_dir is None:
+        args.report_dir = os.environ.get("SKYCIV_REPORT_DIR") or None
 
-    load_env()
     missing = [k for k in ("SKYCIV_API_USERNAME", "SKYCIV_API_KEY") if not os.environ.get(k)]
     if missing:
         print(f"refusing to run: {', '.join(missing)} not set (see .env.example). "
@@ -208,11 +221,16 @@ def main(argv: list[str] | None = None) -> int:
     print(f"endpoint   : {client.config.base_url}")
     print(f"recording  : {record_dir}")
 
+    design_code = None if args.no_design else args.design_code
+    # SkyCivClient.analyze keeps the session open only for a design check;
+    # retry_report_alt must know that to decide whether call 1's session id
+    # is still usable.
+    session_open = bool(design_code)
     try:
         run = client.analyze(
             graph,
             load_case_id,
-            design_code=None if args.no_design else args.design_code,
+            design_code=design_code,
             want_report=not args.no_report,
         )
     except SkyCivError as e:
@@ -229,7 +247,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if _report_failed(run) and not args.no_report and not args.no_report_alt:
         try:
-            run.report_url = retry_report_alt(client, graph, load_case_id, run)
+            run.report_url = retry_report_alt(
+                client, graph, load_case_id, run, session_open=session_open
+            )
         except SkyCivError as e:
             print(f"{FN_REPORT_ALT} call failed: {e}")
 

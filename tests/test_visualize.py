@@ -6,6 +6,7 @@ m5) so this module does not depend on the solver.
 
 from __future__ import annotations
 
+import math
 import sys
 import tempfile
 import unittest
@@ -20,8 +21,10 @@ from contract_selfcheck import build_decision, build_graph  # noqa: E402
 
 from earl.analysis.visualize import (  # noqa: E402
     FAIL_COLOUR,
+    LABEL_OFFSET,
     NEUTRAL_COLOUR,
     PASS_COLOUR,
+    _label_positions,
     render_truss_svg,
     save_truss_svg,
 )
@@ -154,6 +157,92 @@ class TestRenderTrussSvg(unittest.TestCase):
         svg = render_truss_svg(self.graph, d)
         self.assertIn("APPROVED", svg)
         self.assertNotIn(FAIL_COLOUR, svg.split('id="legend"')[0])
+
+
+def _member_line(svg: str, member_id: str) -> tuple[float, float, float, float]:
+    line = next(l for l in svg.splitlines() if f'id="member-{member_id}"' in l)
+    return tuple(float(line.split(f'{k}="')[1].split('"')[0]) for k in ("x1", "y1", "x2", "y2"))
+
+
+def _label_anchor(svg: str, member_id: str) -> tuple[float, float]:
+    """(x, y) of the <text> whose content is the member label ('m7' or
+    'm7 SF=...'). The y attribute carries a +4 baseline nudge, which is
+    removed so callers get the geometric anchor."""
+    root = ET.fromstring(svg)
+    for el in root.iter():
+        if el.tag.endswith("text") and el.text and (el.text == member_id or el.text.startswith(member_id + " ")):
+            return float(el.get("x")), float(el.get("y")) - 4.0
+    raise AssertionError(f"no label for {member_id}")
+
+
+def _distance_to_segment(px, py, x1, y1, x2, y2) -> float:
+    dx, dy = x2 - x1, y2 - y1
+    t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+
+class TestMemberLabelPlacement(unittest.TestCase):
+    """The crossing diagonals of each bay (m7/m8, m9/m10) share a midpoint,
+    so midpoint labels would overprint; and a label must not sit on its own
+    line."""
+
+    def setUp(self):
+        self.graph = build_graph()
+        self.decision = build_decision(self.graph)
+        self.svg = render_truss_svg(self.graph, self.decision)
+
+    def test_crossing_diagonal_labels_are_separated(self):
+        for a, b in (("m7", "m8"), ("m9", "m10")):
+            ax, ay = _label_anchor(self.svg, a)
+            bx, by = _label_anchor(self.svg, b)
+            self.assertGreater(math.hypot(ax - bx, ay - by), 20.0, (a, b))
+
+    def test_crossing_diagonals_use_30_and_70_percent_in_member_order(self):
+        x1, y1, x2, y2 = _member_line(self.svg, "m7")
+        lx, ly = _label_anchor(self.svg, "m7")
+        # Project the anchor back onto the member: it should be at t = 0.3.
+        dx, dy = x2 - x1, y2 - y1
+        t = ((lx - x1) * dx + (ly - y1) * dy) / (dx * dx + dy * dy)
+        self.assertAlmostEqual(t, 0.3, places=2)
+        x1, y1, x2, y2 = _member_line(self.svg, "m8")
+        lx, ly = _label_anchor(self.svg, "m8")
+        dx, dy = x2 - x1, y2 - y1
+        t = ((lx - x1) * dx + (ly - y1) * dy) / (dx * dx + dy * dy)
+        self.assertAlmostEqual(t, 0.7, places=2)
+
+    def test_non_crossing_member_label_stays_at_midpoint(self):
+        x1, y1, x2, y2 = _member_line(self.svg, "m1")   # horizontal chord
+        lx, _ = _label_anchor(self.svg, "m1")
+        self.assertAlmostEqual(lx, (x1 + x2) / 2, places=1)
+
+    def test_every_label_is_offset_from_its_own_line(self):
+        for m in self.graph.members:
+            seg = _member_line(self.svg, m.id)
+            lx, ly = _label_anchor(self.svg, m.id)
+            d = _distance_to_segment(lx, ly, *seg)
+            self.assertAlmostEqual(d, LABEL_OFFSET, delta=0.2, msg=m.id)
+
+    def test_placement_holds_without_a_decision(self):
+        svg = render_truss_svg(self.graph)
+        ax, ay = _label_anchor(svg, "m7")
+        bx, by = _label_anchor(svg, "m8")
+        self.assertGreater(math.hypot(ax - bx, ay - by), 20.0)
+
+    def test_placement_is_deterministic(self):
+        self.assertEqual(self.svg, render_truss_svg(self.graph, self.decision))
+
+    def test_label_positions_helper(self):
+        # Two members sharing a midpoint -> 0.3 / 0.7 in input order; a third
+        # elsewhere stays at 0.5; midpoints 1 px apart still count as shared.
+        segs = [(0, 0, 100, 100), (0, 100, 100, 0), (200, 0, 300, 0), (0, 1, 100, 101)]
+        fr = _label_positions(segs)
+        self.assertAlmostEqual(fr[0], 0.3)
+        self.assertAlmostEqual(fr[1], 0.5)
+        self.assertAlmostEqual(fr[2], 0.5)
+        self.assertAlmostEqual(fr[3], 0.7)
+        self.assertEqual(_label_positions([]), [])
+        self.assertEqual(_label_positions([(0, 0, 10, 0)]), [0.5])
 
 
 class TestSaveTrussSvg(unittest.TestCase):

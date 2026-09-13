@@ -71,6 +71,14 @@ def escalate(
     for ERROR outcomes and, unless `always`, for APPROVED ones.
     """
     decision.validate()
+    # The report is attached to *this* decision, so the model we send must be
+    # the structure the decision answers for; a caller that pairs the wrong
+    # graph would otherwise get a SkyCiv report (and a cross-check) for a
+    # different structure stapled to the verdict.
+    if decision.graph_id != graph.id:
+        raise ValueError(
+            f"decision {decision.id!r} is for graph {decision.graph_id!r}, not {graph.id!r}"
+        )
     if decision.outcome is Outcome.ERROR:
         return decision
     if decision.outcome is Outcome.APPROVED and not always:

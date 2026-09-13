@@ -1,5 +1,5 @@
 {
-  "_comment": "HAND-BUILT to the documented SkyCiv v3 response shape, NOT recorded from the live API. Call-1 response for the 10-bar truss (all members 1 in^2 = 645.16 mm^2). member_forces axial values are the PyNite equal-area forces (tests/\u2026 benchmark regression pin) in kN, tension positive; member_stresses axial in MPa. Deliberately mixes the axial shapes R15 tolerates: [position, value] pairs (m1,m3,m5,m7), scalar (m2,m4,m9), flat list (m6), dict position->value (m8,m10), and both str and int member keys. Results are keyed by load-combination id ('1').",
+  "_comment": "HAND-BUILT to the documented SkyCiv v3 response shape, NOT recorded from the live API. Call-1 response for the 10-bar truss (all members 1 in^2 = 645.16 mm^2). member_forces axial values are the PyNite equal-area forces (tests/\u2026 benchmark regression pin) in kN, tension positive; member_stresses axial in MPa. Deliberately mixes the axial shapes R15 tolerates: [position, value] pairs (m1,m3,m5,m7), scalar (m2,m4,m9), flat list (m6), dict position->value (m8,m10). Member keys are strings here because JSON object keys always are; int keys (a transport that pre-parses ids) are covered by an in-code test in tests/test_skyciv.py. Results are keyed by load-combination id ('1').",
   "response": {
     "status": 0,
     "msg": "All functions executed",

@@ -17,13 +17,17 @@ sys.path.insert(0, str(ROOT))
 
 from earl.analysis.solver import (  # noqa: E402
     G_ACCEL,
+    PLANAR_TOL,
     MemberForce,
     SolveResult,
     SolverError,
     build_model,
+    check_finite,
+    check_planar_loads,
     check_stability,
     member_length,
     planar_axis,
+    restrained_dofs,
     solve,
 )
 from earl.contracts import (  # noqa: E402
@@ -270,6 +274,246 @@ class TestErrors(unittest.TestCase):
         )
         with self.assertRaises(SolverError):
             solve(graph, "lc")
+
+    def test_duplicate_load_case_id_rejected(self):
+        """S4: Graph.validate() does not check load case ids; solving 'the
+        first one' would tie the verdict to list order, so it is an error."""
+        graph = two_bar_graph()
+        graph.load_cases.append(LoadCase("lc", "twin", [PointLoad("p9", "apex", fy=-1.0)]))
+        graph.validate()                      # the contract lets this through
+        for fn in (lambda: solve(graph, "lc"), lambda: build_model(graph, "lc")):
+            with self.assertRaises(SolverError) as ctx:
+                fn()
+            self.assertIn("duplicate load case id 'lc'", str(ctx.exception))
+        # A different, unique id on the same graph is still solvable.
+        graph.load_cases[1].id = "lc2"
+        solve(graph, "lc")
+        solve(graph, "lc2")
+
+
+class TestCheckFinite(unittest.TestCase):
+    """S3: NaN/inf/non-positive numerics must be named, never solved."""
+
+    def assert_rejected(self, graph, *needles):
+        with self.assertRaises(SolverError) as ctx:
+            check_finite(graph)
+        for needle in needles:
+            self.assertIn(needle, str(ctx.exception))
+        with self.assertRaises(SolverError) as ctx:
+            solve(graph, "lc")
+        for needle in needles:
+            self.assertIn(needle, str(ctx.exception))
+
+    def test_nan_yield_strength(self):
+        graph = two_bar_graph()
+        graph.materials[0].yield_strength = math.nan
+        self.assert_rejected(graph, "material 'mat'", "yield_strength")
+
+    def test_infinite_elastic_modulus(self):
+        graph = two_bar_graph()
+        graph.materials[0].elastic_modulus = math.inf
+        self.assert_rejected(graph, "material 'mat'", "elastic_modulus")
+
+    def test_non_positive_elastic_modulus(self):
+        graph = two_bar_graph()
+        graph.materials[0].elastic_modulus = 0.0
+        self.assert_rejected(graph, "material 'mat'", "elastic_modulus")
+
+    def test_negative_or_nan_density(self):
+        graph = two_bar_graph()
+        graph.materials[0].density = -1.0
+        self.assert_rejected(graph, "material 'mat'", "density")
+        graph.materials[0].density = math.nan
+        self.assert_rejected(graph, "material 'mat'", "density")
+
+    def test_zero_area(self):
+        graph = two_bar_graph()
+        graph.sections[0].area = 0.0
+        self.assert_rejected(graph, "section 'sec'", "area")
+
+    def test_nan_area_and_negative_inertia(self):
+        graph = two_bar_graph()
+        graph.sections[0].area = math.nan
+        self.assert_rejected(graph, "section 'sec'", "area")
+        graph.sections[0].area = AREA
+        graph.sections[0].iz = -1e-6
+        self.assert_rejected(graph, "section 'sec'", "iz")
+        graph.sections[0].iz = math.inf
+        self.assert_rejected(graph, "section 'sec'", "iz")
+
+    def test_nan_coordinate(self):
+        graph = two_bar_graph()
+        graph.node("apex").y = math.nan
+        self.assert_rejected(graph, "node 'apex'", "y=nan")
+        graph.node("apex").y = 1.0
+        graph.node("left").z = math.inf
+        self.assert_rejected(graph, "node 'left'", "z=inf")
+
+    def test_nan_load(self):
+        graph = two_bar_graph()
+        graph.load_cases[0].point_loads[0].fy = math.nan
+        self.assert_rejected(graph, "load 'p1'", "load case 'lc'", "fy=nan")
+
+    def test_loads_in_other_cases_are_checked_too(self):
+        graph = two_bar_graph()
+        graph.load_cases.append(LoadCase("other", "o", [PointLoad("p2", "apex", fx=math.inf)]))
+        self.assert_rejected(graph, "load 'p2'", "load case 'other'")
+
+    def test_clean_graph_passes(self):
+        check_finite(two_bar_graph())         # must not raise
+
+
+class TestPlanarLoads(unittest.TestCase):
+    """S1: a load along the planar (restrained-everywhere) axis at a node the
+    contract leaves free is a mechanism, not a zero-force structure."""
+
+    def test_out_of_plane_load_at_free_node_is_unstable(self):
+        graph = two_bar_graph(30.0, 10_000.0)
+        graph.load_cases[0].point_loads.append(PointLoad("pz", "apex", fz=-500.0))
+        self.assertEqual(planar_axis(graph), "DZ")
+        for fn in (lambda: check_planar_loads(graph, "lc"), lambda: solve(graph, "lc")):
+            with self.assertRaises(SolverError) as ctx:
+                fn()
+            msg = str(ctx.exception)
+            self.assertIn("unstable", msg.lower())
+            self.assertIn("'pz'", msg)
+            self.assertIn("'apex'", msg)
+            self.assertIn("out-of-plane", msg)
+
+    def test_out_of_plane_load_at_pin_node_still_solves(self):
+        graph = two_bar_graph(30.0, 10_000.0)
+        graph.load_cases[0].point_loads.append(PointLoad("pz", "left", fz=-500.0))
+        check_planar_loads(graph, "lc")       # PIN restrains DZ by contract
+        result = solve(graph, "lc")
+        self.assertAlmostEqual(result.force("mL").axial_force, -10_000.0, delta=1e-6)
+        self.assertAlmostEqual(result.reactions["left"].fz, 500.0, delta=1e-6)
+
+    def test_zero_component_is_not_a_load(self):
+        graph = two_bar_graph(30.0, 10_000.0)
+        graph.load_cases[0].point_loads.append(PointLoad("pz", "apex", fz=0.0))
+        check_planar_loads(graph, "lc")       # must not raise
+
+    def test_roller_that_frees_the_planar_axis_is_unrestrained(self):
+        """XZ-plane bar: ROLLER_Y frees DY, which is the planar axis here
+        (b is lifted in z so the structure is a plane, not a line)."""
+        graph = make_graph(
+            nodes=[Node("a", 0.0, 0.0, 0.0, support=SupportType.PIN),
+                   Node("b", 3.0, 0.0, 1.0, support=SupportType.ROLLER_Y)],
+            members=[("m", "a", "b")],
+            loads=[PointLoad("py", "b", fy=-100.0)],
+        )
+        self.assertEqual(planar_axis(graph), "DY")
+        with self.assertRaises(SolverError) as ctx:
+            solve(graph, "lc")
+        self.assertIn("unstable", str(ctx.exception).lower())
+
+    def xz_truss(self, density=0.0):
+        graph = two_bar_graph(30.0, 10_000.0)
+        for n in graph.nodes:                 # y -> z, load along -z
+            n.y, n.z = 0.0, n.y
+        graph.load_cases[0].point_loads[0] = PointLoad("p1", "apex", fz=-10_000.0)
+        graph.materials[0].density = density
+        self.assertEqual(planar_axis(graph), "DY")
+        return graph
+
+    def test_self_weight_on_xz_truss_is_unstable(self):
+        """Gravity is -Y; on an XZ truss it is out of plane at the free apex."""
+        graph = self.xz_truss(density=7_850.0)
+        with self.assertRaises(SolverError) as ctx:
+            solve(graph, "lc", include_self_weight=True)
+        msg = str(ctx.exception)
+        self.assertIn("unstable", msg.lower())
+        self.assertIn("self-weight", msg)
+        self.assertIn("'apex'", msg)
+        # The contract flag is checked the same way as the override (R8).
+        graph.load_cases[0].include_self_weight = True
+        with self.assertRaises(SolverError):
+            solve(graph, "lc")
+
+    def test_xz_truss_without_self_weight_still_solves(self):
+        """Density > 0 alone is harmless: no self-weight, no out-of-plane load."""
+        result = solve(self.xz_truss(density=7_850.0), "lc")
+        self.assertFalse(result.include_self_weight)
+        self.assertAlmostEqual(result.force("mL").axial_force, -10_000.0, delta=1e-6)
+
+    def test_xz_truss_with_zero_density_solves_with_self_weight_requested(self):
+        """The pre-existing XZ case: density 0 means self-weight is ineffective."""
+        result = solve(self.xz_truss(density=0.0), "lc", include_self_weight=True)
+        self.assertFalse(result.include_self_weight)
+        self.assertAlmostEqual(result.force("mL").axial_force, -10_000.0, delta=1e-6)
+
+    def test_self_weight_on_fully_pinned_xz_bar_solves(self):
+        """Both ends restrain DY by contract, so the weight goes to reactions."""
+        rho = 7_850.0
+        graph = make_graph(
+            nodes=[Node("a", 0.0, 0.0, 0.0, support=SupportType.PIN),
+                   Node("b", 0.0, 0.0, 4.0, support=SupportType.PIN)],
+            members=[("m", "a", "b")],
+            loads=[],
+            density=rho,
+            include_self_weight=True,
+        )
+        self.assertEqual(planar_axis(graph), "DY")
+        result = solve(graph, "lc")
+        half = rho * AREA * 4.0 * G_ACCEL / 2.0
+        self.assertAlmostEqual(result.reactions["a"].fy, half, delta=1e-9)
+        self.assertAlmostEqual(result.reactions["b"].fy, half, delta=1e-9)
+
+    def test_3d_truss_is_not_checked(self):
+        R, H = 1.0, 2.0
+        feet = [
+            Node(f"f{i}", R * math.cos(a), 0.0, R * math.sin(a), support=SupportType.PIN)
+            for i, a in enumerate((0.0, 2 * math.pi / 3, 4 * math.pi / 3))
+        ]
+        graph = make_graph(
+            nodes=feet + [Node("apex", 0.0, H, 0.0)],
+            members=[(f"leg{i}", f"f{i}", "apex") for i in range(3)],
+            loads=[PointLoad("p1", "apex", fx=100.0, fy=-3_000.0, fz=50.0)],
+        )
+        self.assertIsNone(planar_axis(graph))
+        check_planar_loads(graph, "lc")       # must not raise
+        solve(graph, "lc")
+
+
+class TestPlanarTolerance(unittest.TestCase):
+    """S2: planar detection is relative, so export noise does not turn a
+    planar truss into an out-of-plane mechanism."""
+
+    def test_tiny_z_noise_is_still_planar(self):
+        graph = two_bar_graph(30.0, 10_000.0)
+        graph.node("apex").z = 1e-17
+        self.assertEqual(planar_axis(graph), "DZ")
+        self.assertIn("DZ", restrained_dofs(graph)["apex"])
+        result = solve(graph, "lc")
+        self.assertAlmostEqual(result.force("mL").axial_force, -10_000.0, delta=1e-6)
+
+    def test_tolerance_scales_with_the_structure(self):
+        """A 1 km truss with 1e-7 m of z scatter is planar; the same scatter
+        relative to a 1 m floor is not the point -- it is the ratio."""
+        graph = two_bar_graph(30.0, 10_000.0, L=1_000.0)
+        extent = max(n.x for n in graph.nodes) - min(n.x for n in graph.nodes)
+        graph.node("apex").z = 0.5 * PLANAR_TOL * extent
+        self.assertEqual(planar_axis(graph), "DZ")
+        graph.node("apex").z = 2.0 * PLANAR_TOL * extent
+        self.assertIsNone(planar_axis(graph))
+
+    def test_floor_applies_to_tiny_structures(self):
+        """Extent < 1 m: the tolerance is PLANAR_TOL * 1.0, not smaller."""
+        graph = two_bar_graph(30.0, 10_000.0, L=0.01)
+        graph.node("apex").z = 0.5 * PLANAR_TOL
+        self.assertEqual(planar_axis(graph), "DZ")
+        graph.node("apex").z = 2.0 * PLANAR_TOL
+        self.assertIsNone(planar_axis(graph))
+
+    def test_same_predicate_everywhere(self):
+        """restrained_dofs (check_stability) and build_model must agree with
+        planar_axis, otherwise a near-planar truss is unstable in one and
+        over-restrained in the other."""
+        graph = two_bar_graph(30.0, 10_000.0)
+        graph.node("apex").z = 1e-17
+        check_stability(graph)                # would raise without the tolerance
+        model = build_model(graph, "lc")
+        self.assertTrue(model.nodes["apex"].support_DZ)
 
 
 class TestSectionsAndGeometry(unittest.TestCase):

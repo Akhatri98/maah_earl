@@ -6,9 +6,12 @@ callable; nothing touches the network and no credential is read.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import sys
+import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -19,8 +22,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from contract_selfcheck import build_graph  # noqa: E402
 
+import earl.config  # noqa: E402
 from earl.analysis import orchestrator  # noqa: E402
 from earl.analysis.orchestrator import (  # noqa: E402
+    MAX_LLM_RESPONSE_BYTES,
     AnalysisPlan,
     LLMError,
     LLMPlanner,
@@ -55,6 +60,21 @@ def graph_with_moved_load():
     )
     g.validate()
     return g
+
+
+@contextlib.contextmanager
+def no_dotenv():
+    """Point earl.config at a .env that does not exist.
+
+    `MetaModelClient.from_env()` goes through `earl.config.require`, which
+    calls `earl.config.load_env()` directly -- patching the name imported
+    into `orchestrator` does not reach it, so without this the tests would
+    merge the developer's real `.env` into os.environ and the assertions
+    below would depend on whatever LLM_MODEL / LLM_BASE_URL are set there.
+    """
+    with tempfile.TemporaryDirectory() as tmp, \
+         mock.patch.object(earl.config, "ENV_PATH", Path(tmp) / "absent.env"):
+        yield
 
 
 class FakeClient:
@@ -188,6 +208,31 @@ class TestLLMPlanner(unittest.TestCase):
         self.assertTrue(plan.rationale.startswith("LLM plan rejected ("))
         self.assertIn("HTTP 503", plan.rationale)
 
+    def test_unterminated_fence_with_whitespace_does_not_hang(self):
+        """Regression for the catastrophic-backtracking fence regex: an
+        opening fence followed by a few KB of whitespace must be rejected in
+        linear time, not hang the gate."""
+        reply = "```json\n" + " " * 20000 + "\n" * 2000
+        t0 = time.perf_counter()
+        plan = LLMPlanner(FakeClient(reply)).plan(self.graph)
+        elapsed = time.perf_counter() - t0
+        self.assertLess(elapsed, 1.0, f"took {elapsed:.2f}s")
+        self.assertEqual(plan.source, "rules")
+        self.assertTrue(plan.rationale.startswith("LLM plan rejected ("))
+        self.assertEqual(plan.load_case_id, "lc_1")
+
+    def test_oversized_reply_is_rejected_with_reason(self):
+        valid = json.dumps({
+            "load_case_id": "lc_1", "include_self_weight": False,
+            "focus_member_ids": [], "rationale": "x",
+        })
+        reply = valid + " " * MAX_LLM_RESPONSE_BYTES   # valid JSON, but too big
+        plan = LLMPlanner(FakeClient(reply)).plan(self.graph)
+        self.assertEqual(plan.source, "rules")
+        self.assertTrue(plan.rationale.startswith("LLM plan rejected ("))
+        self.assertIn("too long", plan.rationale)
+        self.assertIn(str(MAX_LLM_RESPONSE_BYTES), plan.rationale)
+
     def test_fallback_equals_rule_plan(self):
         rule = RuleBasedPlanner().plan(self.graph)
         plan = LLMPlanner(FakeClient("{}")).plan(self.graph)
@@ -255,6 +300,35 @@ class TestParsePlanJson(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_plan_json("   ")
 
+    def test_fenced_with_surrounding_whitespace(self):
+        self.assertEqual(parse_plan_json("  \n```json  \n{\"a\": 1}\n```  \n"), {"a": 1})
+
+    def test_unterminated_fence_is_rejected_quickly(self):
+        text = "```json\n" + " " * 20000 + "\n" * 2000
+        t0 = time.perf_counter()
+        with self.assertRaises(ValueError):
+            parse_plan_json(text)
+        self.assertLess(time.perf_counter() - t0, 1.0)
+
+    def test_unterminated_fence_with_object_still_parses(self):
+        # Linear stripping: opening fence, no closing fence, JSON inside.
+        self.assertEqual(parse_plan_json("```json\n{\"a\": 1}"), {"a": 1})
+
+    def test_length_cap_is_exact(self):
+        at_cap = "{" + " " * (MAX_LLM_RESPONSE_BYTES - 2) + "}"
+        self.assertEqual(len(at_cap.encode("utf-8")), MAX_LLM_RESPONSE_BYTES)
+        self.assertEqual(parse_plan_json(at_cap), {})
+        with self.assertRaises(ValueError) as ctx:
+            parse_plan_json(at_cap + " ")
+        self.assertIn("too long", str(ctx.exception))
+
+    def test_length_cap_counts_bytes_not_characters(self):
+        # 3-byte characters: fewer characters than the cap, more bytes.
+        text = "{}" + "\u20ac" * (MAX_LLM_RESPONSE_BYTES // 3 + 1)
+        self.assertLess(len(text), MAX_LLM_RESPONSE_BYTES)
+        with self.assertRaises(ValueError):
+            parse_plan_json(text)
+
 
 class FakeResponse:
     def __init__(self, status_code=200, payload=None, text=""):
@@ -316,30 +390,46 @@ class TestMetaModelClient(unittest.TestCase):
         with self.assertRaises(LLMError):
             client.complete("s", "u")
 
+    def test_repr_does_not_leak_the_api_key(self):
+        client = MetaModelClient(api_key="sk-very-secret", model="m")
+        for text in (repr(client), str(client)):
+            self.assertNotIn("sk-very-secret", text)
+            self.assertNotIn("api_key", text)
+        self.assertEqual(client.api_key, "sk-very-secret")   # still usable
+
     def test_from_env_reads_overrides(self):
         env = {"META_MUSE_KEY": "abc", "LLM_BASE_URL": "https://x.example/v2/",
                "LLM_MODEL": "m-9"}
-        with mock.patch.dict(os.environ, env, clear=False), \
-             mock.patch.object(orchestrator, "load_env", lambda *a, **k: {}):
+        with no_dotenv(), mock.patch.dict(os.environ, env, clear=False):
             client = MetaModelClient.from_env()
         self.assertEqual(client.api_key, "abc")
         self.assertEqual(client.base_url, "https://x.example/v2")
         self.assertEqual(client.model, "m-9")
 
+    def test_from_env_never_reads_the_real_dotenv(self):
+        """With a .env that does not exist and no key in the environment,
+        from_env must fail -- proving the test path cannot pick up a
+        developer's real credential."""
+        with no_dotenv(), mock.patch.dict(os.environ, {"META_MUSE_KEY": ""}, clear=False):
+            with self.assertRaises(RuntimeError):
+                MetaModelClient.from_env()
+
 
 class TestDefaultPlanner(unittest.TestCase):
     def test_rules_when_no_key(self):
-        with mock.patch.dict(os.environ, {"META_MUSE_KEY": ""}, clear=False), \
-             mock.patch.object(orchestrator, "load_env", lambda *a, **k: {}):
+        with no_dotenv(), mock.patch.dict(os.environ, {"META_MUSE_KEY": ""}, clear=False):
             self.assertIsInstance(default_planner(), RuleBasedPlanner)
 
     def test_llm_when_key_present(self):
-        with mock.patch.dict(os.environ, {"META_MUSE_KEY": "k"}, clear=False), \
-             mock.patch.object(orchestrator, "load_env", lambda *a, **k: {}):
+        env = {"META_MUSE_KEY": "k", "LLM_BASE_URL": "https://llm.example/v1",
+               "LLM_MODEL": "muse-test"}
+        with no_dotenv(), mock.patch.dict(os.environ, env, clear=False):
             planner = default_planner()
         self.assertIsInstance(planner, LLMPlanner)
         self.assertIsInstance(planner.client, MetaModelClient)
         self.assertIsInstance(planner.fallback, RuleBasedPlanner)
+        self.assertEqual(planner.client.base_url, "https://llm.example/v1")
+        self.assertEqual(planner.client.model, "muse-test")
 
 
 if __name__ == "__main__":

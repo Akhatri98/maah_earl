@@ -27,7 +27,7 @@ python3 -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\acti
 pip install -r requirements.txt
 cp .env.example .env                                # fill in what you have; everything below runs without it
 
-python3 -m unittest discover -s tests -t . -q        # 545 tests, all offline
+python3 -m unittest discover -s tests -t . -q        # 647 tests, all offline
 
 python3 scripts/run_pipeline.py                      # the demo change, every stage, offline
 python3 scripts/run_pipeline.py --onshape-fixture    # Track A's graph builder on the recorded Onshape read

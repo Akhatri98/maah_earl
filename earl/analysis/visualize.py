@@ -57,6 +57,8 @@ MEMBER_WIDTH = 3.0
 AFFECTED_WIDTH = 6.5
 NODE_RADIUS = 5.0
 ARROW_LENGTH = 42.0
+LABEL_OFFSET = 10.0        # px, perpendicular to the member, so text never sits on the line
+LABEL_COINCIDENT_PX = 1.0  # midpoints closer than this are "the same point"
 FONT = "font-family=\"Helvetica, Arial, sans-serif\""
 
 # Reserved bands (px) around the structure.
@@ -146,6 +148,38 @@ def _fit(graph: DependencyGraph, width: float, height: float) -> _Fit:
 # --------------------------------------------------------------------------
 # Pieces
 # --------------------------------------------------------------------------
+
+def _label_positions(segments: list[tuple[float, float, float, float]]) -> list[float]:
+    """Fraction along each member (0..1) at which to anchor its label.
+
+    A label sits at the midpoint unless another member's midpoint coincides
+    with it (within LABEL_COINCIDENT_PX). That is exactly the crossing
+    diagonals of a truss bay (m7/m8, m9/m10 on the 10-bar): both midpoints
+    are the bay centre, so both labels would print on top of each other and
+    the reader could not tell which SF belongs to which diagonal. Members
+    sharing a midpoint are spread along their own length -- two of them land
+    at 30 % and 70 % -- in member order, so the picture is deterministic.
+    """
+    mids = [((x1 + x2) / 2, (y1 + y2) / 2) for x1, y1, x2, y2 in segments]
+    # Group indices by coincident midpoint, first-seen order.
+    groups: list[list[int]] = []
+    for i, (mx, my) in enumerate(mids):
+        for grp in groups:
+            gx, gy = mids[grp[0]]
+            if math.hypot(mx - gx, my - gy) <= LABEL_COINCIDENT_PX:
+                grp.append(i)
+                break
+        else:
+            groups.append([i])
+    fractions = [0.5] * len(segments)
+    for grp in groups:
+        k = len(grp)
+        if k == 1:
+            continue
+        for slot, i in enumerate(grp):
+            fractions[i] = 0.3 + 0.4 * slot / (k - 1)   # k == 2 -> 0.3, 0.7
+    return fractions
+
 
 def _support_glyph(kind: SupportType, cx: float, cy: float) -> list[str]:
     s = 11.0
@@ -292,10 +326,13 @@ def render_truss_svg(
     # the change target gets a dashed outline so the edited member is
     # distinguishable from the ones it dragged along.
     parts.append('<g id="members">')
-    for m in graph.members:
-        a, b = graph.node(m.start_node), graph.node(m.end_node)
-        x1, y1 = fit.to_canvas(a.x, a.y)
-        x2, y2 = fit.to_canvas(b.x, b.y)
+    segments = [
+        fit.to_canvas(graph.node(m.start_node).x, graph.node(m.start_node).y)
+        + fit.to_canvas(graph.node(m.end_node).x, graph.node(m.end_node).y)
+        for m in graph.members
+    ]
+    fractions = _label_positions(segments)
+    for m, (x1, y1, x2, y2), t in zip(graph.members, segments, fractions):
         res = results.get(m.id)
         colour = status_colour(res)
         w = AFFECTED_WIDTH if m.id in affected else MEMBER_WIDTH
@@ -304,11 +341,13 @@ def render_truss_svg(
             f'<line id="member-{esc(m.id)}" x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
             f'stroke="{colour}" stroke-width="{w}" stroke-linecap="round"{dash}/>'
         )
-        # Label at the midpoint, nudged off the line along its normal.
-        mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+        # Label at fraction t along the member (0.5 unless another member's
+        # midpoint coincides, see _label_positions), pushed off the line
+        # along its normal so the text never overprints the stroke.
+        px, py = x1 + (x2 - x1) * t, y1 + (y2 - y1) * t
         length = math.hypot(x2 - x1, y2 - y1) or 1.0
         nx, ny = -(y2 - y1) / length, (x2 - x1) / length
-        lx, ly = mx + nx * 10, my + ny * 10
+        lx, ly = px + nx * LABEL_OFFSET, py + ny * LABEL_OFFSET
         if decision is not None:
             label = f"{m.id} SF={format_sf(res.safety_factor) if res else 'n/a'}"
         else:

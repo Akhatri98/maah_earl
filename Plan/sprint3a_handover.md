@@ -28,7 +28,7 @@ integration commit on `dev`:
 | **Gmail** | Built: `earl/delivery/gmail.py` (`GmailSender` over the REST API with an injectable transport, `OutboxSender` writing the identical message as `.eml`), wired as the last pipeline stage. Escalations and errors are mailed by default; approvals are logged (`notify_on`). |
 
 Run it: `python3 scripts/run_pipeline.py` (offline demo), `--onshape-fixture`
-(Track A's real graph path), `--skyciv` / `--send` (live). 545 tests pass.
+(Track A's real graph path), `--skyciv` / `--send` (live). 647 tests pass.
 
 
 ```

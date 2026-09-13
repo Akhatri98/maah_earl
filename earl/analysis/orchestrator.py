@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
@@ -41,6 +40,11 @@ from ..contracts import ChangeKind, DependencyGraph
 DEFAULT_LLM_BASE_URL = "https://api.meta.ai/v1"
 DEFAULT_LLM_MODEL = "muse-spark-1.1"
 LLM_TIMEOUT_SECONDS = 30
+# A plan is a few hundred bytes of JSON. Anything larger is not a plan, and
+# parsing it (or even scanning it for braces) is work an adversarial or
+# runaway model should not be able to make the gate do. Checked BEFORE any
+# parsing so the cost of a rejected reply is one length call.
+MAX_LLM_RESPONSE_BYTES = 65536
 
 PLAN_SOURCE_LLM = "llm"
 PLAN_SOURCE_RULES = "rules"
@@ -151,7 +155,7 @@ class MetaModelClient:
     `.json()`.
     """
 
-    api_key: str
+    api_key: str = field(repr=False)    # never let a log line print the credential
     base_url: str = DEFAULT_LLM_BASE_URL
     model: str = DEFAULT_LLM_MODEL
     timeout: int = LLM_TIMEOUT_SECONDS
@@ -219,9 +223,6 @@ SYSTEM_PROMPT = (
     "must be a subset of the listed member ids."
 )
 
-_FENCE_RE = re.compile(r"^\s*```[a-zA-Z0-9_-]*\s*\n?(.*?)\n?\s*```\s*$", re.DOTALL)
-
-
 def build_prompt(graph: DependencyGraph) -> str:
     """The user message. Shows ONLY the structural outline: the change, the
     load cases (id, name, load count, self-weight flag), the affected member
@@ -256,8 +257,22 @@ def build_prompt(graph: DependencyGraph) -> str:
 
 
 def _strip_fences(text: str) -> str:
-    m = _FENCE_RE.match(text)
-    return m.group(1) if m else text
+    r"""Remove a surrounding ``` fence with plain string operations.
+
+    Deliberately NOT a regex: the previous `^\s*```\w*\s*\n?(.*?)\n?\s*```\s*$`
+    backtracked catastrophically on an unterminated fence followed by
+    whitespace ("```json\n" + a few KB of spaces hung the gate). Every step
+    here is a single linear pass, so the worst case is proportional to the
+    reply length, which is itself capped by MAX_LLM_RESPONSE_BYTES.
+    """
+    text = text.strip()
+    if text.startswith("```"):
+        # Drop the opening fence line, including any language tag.
+        first_newline = text.find("\n")
+        text = "" if first_newline < 0 else text[first_newline + 1:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
 
 
 def parse_plan_json(text: str) -> dict[str, Any]:
@@ -265,7 +280,12 @@ def parse_plan_json(text: str) -> dict[str, Any]:
     around a single top-level object. Raises ValueError on anything else."""
     if not isinstance(text, str) or not text.strip():
         raise ValueError("empty response")
-    candidate = _strip_fences(text).strip()
+    size = len(text.encode("utf-8"))
+    if size > MAX_LLM_RESPONSE_BYTES:
+        raise ValueError(
+            f"response too long ({size} bytes > {MAX_LLM_RESPONSE_BYTES} max)"
+        )
+    candidate = _strip_fences(text)
     try:
         data = json.loads(candidate)
     except json.JSONDecodeError:
@@ -394,4 +414,5 @@ __all__ = [
     "default_planner",
     "DEFAULT_LLM_BASE_URL",
     "DEFAULT_LLM_MODEL",
+    "MAX_LLM_RESPONSE_BYTES",
 ]

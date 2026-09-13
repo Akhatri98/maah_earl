@@ -224,6 +224,31 @@ class TestEscalateSkipsWhenNotNeeded(unittest.TestCase):
         with self.assertRaises(ValueError):
             escalate(self.graph, decision, client)
 
+    def test_decision_for_another_graph_rejected_before_any_call(self):
+        """A report for a different structure must never be attached: the
+        decision's graph_id has to match the graph we would send to SkyCiv."""
+        decision = make_decision()
+        decision.graph_id = "graph-somebody-else"
+        decision.validate()                         # a perfectly valid decision
+        client, transport = make_client(happy_responses())
+        with self.assertRaises(ValueError) as ctx:
+            escalate(self.graph, decision, client)
+        self.assertEqual(
+            str(ctx.exception),
+            f"decision 'dec-001' is for graph 'graph-somebody-else', not {self.graph.id!r}",
+        )
+        self.assertEqual(transport.payloads, [])    # no metered call was made
+
+    def test_graph_mismatch_rejected_even_when_skipping(self):
+        """The check guards the pairing itself, so it also fires for outcomes
+        that would otherwise be returned untouched."""
+        client, transport = make_client(happy_responses())
+        for decision in (make_approved(), make_error()):
+            decision.graph_id = "graph-somebody-else"
+            with self.assertRaises(ValueError):
+                escalate(self.graph, decision, client, always=True)
+        self.assertEqual(transport.payloads, [])
+
 
 class TestEscalateFailure(unittest.TestCase):
     def setUp(self):
