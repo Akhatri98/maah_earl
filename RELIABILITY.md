@@ -97,11 +97,76 @@ experimental claim.
   demo mode cannot send Gmail or make live CAD/LLM/SkyCiv requests. No CAD
   branch creation, merge, or write implementation is part of this project.
 
+## Solver Validation
+
+The benchmark uses the canonical geometry with uniform `A=10 in^2`,
+`E=10,000,000 psi`, two downward `100,000 lbf` loads at n2/n4, and pinned n5/n6.
+Exact inch/lbf conversions are applied once in `earl/units.py`; these validation
+values deliberately differ from the original rounded contract specimen.
+
+The definition is the standard Haftka/Gurdal/Rajan ten-bar family, also
+published with runnable reference code in [Martins and Ning, Appendix D.2.2](https://mdobook.github.io/html/appendix-functions/)
+and its [reference implementation](https://raw.githubusercontent.com/mdobook/resources/main/exercises/tenbartruss/truss.py).
+The uniform 10 in^2 initial design is also specified in [Chen et al. (2015)](https://onlinelibrary.wiley.com/doi/10.1155/2015/521482).
+The frozen values below reproduce that published formulation with an
+independent direct-stiffness calculation (`scripts/benchmark_reference.py`),
+without PyNite. They are **not claimed to be a transcribed numerical table
+from Haftka's book**. A textbook formulation and a same-family benchmark are
+not evidence of code compliance or universal solver correctness.
+
+| Member | Reference Stress (psi, Tension Positive) | PyNite (psi) |
+|---|---:|---:|
+| m1 | 19536.498697 | 19536.498697 |
+| m2 | 4012.463226 | 4012.463226 |
+| m3 | -20463.501303 | -20463.501303 |
+| m4 | -5987.536774 | -5987.536774 |
+| m5 | 3548.961922 | 3548.961922 |
+| m6 | 4012.463226 | 4012.463226 |
+| m7 | 14797.625453 | 14797.625453 |
+| m8 | -13486.645795 | -13486.645795 |
+| m9 | 8467.655712 | 8467.655712 |
+| m10 | -5674.479912 | -5674.479912 |
+
+| Node | Reference dx (in) | Reference dy (in) | PyNite dx, dy (in) |
+|---|---:|---:|---|
+| n1 | 0.847762629 | -3.795126309 | 0.847762629, -3.795126309 |
+| n2 | -0.952237371 | -3.939574985 | -0.952237371, -3.939574985 |
+| n3 | 0.703313953 | -1.674352450 | 0.703313953, -1.674352450 |
+| n4 | -0.736686047 | -1.802115080 | -0.736686047, -1.802115080 |
+| n5, n6 | 0 | 0 | 0, 0 |
+
+The runtime asserts all ten stresses and all twelve translational values
+against committed JSON on first worker use. Relative tolerance is `1e-6`,
+with absolute tolerances `1e-5 psi` and `1e-8 in`. The separate test compares
+the independent calculation to PyNite to six decimal places in psi and nine
+inches decimal places. The production engine is pinned `PyNiteFEA 2.4.1`.
+
+## Sanity Checks
+
+Every successful EARL solve includes both checks. Free-direction joint balance
+reconstructs member force vectors plus external loads; allowed residual is
+`max(1e-6 N, 1e-8 * sum(abs(applied forces)))`. Restrained directions may
+carry reactions. Linearity uses a second load combination with every load
+doubled and checks every recovered member stress at relative tolerance `1e-9`
+with a near-zero numerical scale. Failure or missing checks force `ERROR`.
+
+The initial demo measured `3.2742e-11 N` maximum joint residual and `0.0`
+maximum load-linearity error. Its minimum safety factor is `1.998859` (m8,
+Euler buckling). A killed, singular, malformed, or timed-out solver has no
+safety verdict. A separate worker process is killed after at most 12 seconds;
+no credential environment variables are passed to it.
+
+PyNite axial signs are inverted once to report tension positive. Load-scaled
+axial values below `1e-12 * sum(abs(loads))` are treated as roundoff zero.
+Zero demand uses a null/unbounded safety factor with an explicit flag, never
+nonstandard JSON Infinity. Missing inertia is `NOT_EVALUATED`; tiny inertia
+used solely for PyNite end-release algebra never becomes a capacity.
+
 ## Verification Status
 
-The contract/mapping checkpoint passes 62 offline tests, including the original
-50. Solver reference numbers, sanity measurements, eval counts, integration
-provenance, and deployment verification will be filled in after measurement.
+The numerical and gate checkpoint passes 81 offline tests, including the original
+50. Eval counts, integration provenance, and deployment verification will be
+filled in after measurement.
 
 ## External-Service Reality
 

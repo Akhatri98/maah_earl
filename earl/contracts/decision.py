@@ -266,6 +266,8 @@ class Decision(Serializable):
 
         if self.outcome is Outcome.ERROR and not self.error_message:
             raise ValueError("outcome is ERROR but no error_message was given")
+        if self.error_message and self.outcome is not Outcome.ERROR:
+            raise ValueError("an analysis error_message requires Outcome.ERROR")
 
         incomplete = any(r.status is MemberStatus.NOT_EVALUATED for r in self.member_results)
         disagrees = self.cross_check.agrees is False
@@ -275,7 +277,9 @@ class Decision(Serializable):
             raise ValueError("a failed sanity check requires Outcome.ERROR")
         if self.outcome is Outcome.APPROVED and (
             not self.member_results or incomplete or disagrees or self.error_message or
-            self.escalation_reason is not None
+            self.escalation_reason is not None or
+            self.sanity_checks.equilibrium_ok is not True or
+            self.sanity_checks.linearity_ok is not True
         ):
             raise ValueError("incomplete, disputed or errored analysis cannot be approved")
         if self.outcome is Outcome.ESCALATED and not (failing or disagrees or incomplete):
