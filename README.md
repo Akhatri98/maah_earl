@@ -5,13 +5,14 @@ before it ships, and keeps the paper trail to prove it.**
 
 Built for the Multi-App AI Agent Hackathon by Lemma.
 
-> ### ▶ Two-minute demo
->
-> **TODO: paste the demo video URL here before submitting.**
->
-> Judges can also drive the live thing themselves in a browser —
-> `python3 scripts/serve.py --ngrok` — or watch the six-act terminal demo,
-> `python3 scripts/demo.py`. Both run **offline, with no credentials**.
+| | |
+|---|---|
+| **▶ Two-minute demo** | _<!-- TODO: paste the video link here before submitting -->_ |
+| **Live site** | `python3 scripts/serve.py --ngrok` — drive it yourself, see [The site](#the-site) |
+| **Terminal demo** | `python3 scripts/demo.py` — six acts, ~4 min |
+| **Tests** | 805, all offline: `python3 -m unittest discover -s tests -t . -q` |
+
+Everything above runs **offline, with no credentials**.
 
 ---
 
@@ -67,13 +68,14 @@ no network access.
 
 ## External apps
 
-| App | Stage | What EARL does with it | Status |
-|---|---|---|---|
-| **Onshape** | 1 — ingestion | REST client (`earl/ingestion/onshape_client.py`): reads the variable table, part-studio and assembly features, mates and mate connectors, parts; derives topology and a "where used" index; creates/resets/deletes a **branch sandbox** so evaluation never touches Main | **Live.** The 10-bar truss is modelled in a real document; every fixture in `tests/fixtures/onshape/` is a recorded live response. `scripts/onshape_branch_smoketest.py` runs the full create-version → branch → write-variable → re-read → walk → delete cycle against the live API |
-| **SkyCiv** | 3 — trusted artifact | Builds an S3D model from the same graph, solves it, pulls the PDF report and an AISC-360 design check, and cross-checks member forces against PyNite (`earl/artifacts/`) | **Live, and honestly capped.** The dry run fixed a real payload bug (a truss section carries area only, so `Iy` was rejected 110 times) and the model now validates and reaches SkyCiv's solver — where the **free tier's 5-member limit** stops a 10-member truss. That is a purchasing decision, not a bug, and the ECN says so rather than citing a report nobody can open |
-| **Gmail** | 4 — delivery | Send-only REST client (`earl/delivery/gmail.py`). The e-mail body **is** the rendered ECN, byte for byte; evidence (ECN JSON, Decision JSON, truss SVG, SkyCiv PDF when one exists) is attached, never paraphrased | **Wired, credentials pending.** Without `--send`, the identical message is written to `artifacts/demo/outbox/*.eml` — byte for byte what Gmail would receive |
-| **Meta Muse** (LLM) | 2 — orchestration, and the eval baseline | Plans which load case leads and whether to add self-weight (advisory only — see Biject below). The **same model** also drives the baseline agent the reliability numbers are measured against | **Live.** All twenty eval scenarios and the 3× consistency run were executed against it; every turn is recorded in `demo/recordings/transcripts/` |
-| **ngrok** | demo | Public URL for the browser demo so a judge can drive it from their own machine | **Live**, and the server is built for a public URL: it writes nothing, sends nothing, calls no model, serves five fixed files, caps bodies and rate-limits runs |
+| App | Stage | What EARL does with it | Status | Where |
+|---|---|---|---|---|
+| **Onshape** | 1 — ingestion | REST client (`earl/ingestion/onshape_client.py`): reads the variable table, part-studio and assembly features, mates and mate connectors, parts; derives topology and a "where used" index; creates/resets/deletes a **branch sandbox** so evaluation never touches Main | **Live.** The 10-bar truss is modelled in a real document; every fixture in `tests/fixtures/onshape/` is a recorded live response. `scripts/onshape_branch_smoketest.py` runs the full create-version → branch → write-variable → re-read → walk → delete cycle against the live API | `earl/ingestion/` |
+| **SkyCiv** | 3 — trusted artifact | Builds an S3D model from the same graph, solves it, pulls the PDF report and an AISC-360 design check, and cross-checks member forces against PyNite (`earl/artifacts/`) | **Live, and honestly capped.** The dry run fixed a real payload bug (a truss section carries area only, so `Iy` was rejected 110 times) and the model now validates and reaches SkyCiv's solver — where the **free tier's 5-member limit** stops a 10-member truss. That is a purchasing decision, not a bug, and the ECN says so rather than citing a report nobody can open | `earl/artifacts/` |
+| **Gmail** | 4 — delivery | Send-only REST client (`earl/delivery/gmail.py`). The e-mail body **is** the rendered ECN, byte for byte; evidence (ECN JSON, Decision JSON, truss SVG, SkyCiv PDF when one exists) is attached, never paraphrased | **Wired, credentials pending.** Without `--send`, the identical message is written to `artifacts/demo/outbox/*.eml` — byte for byte what Gmail would receive | `earl/delivery/` |
+| **Meta Muse** (LLM) | 2 — orchestration, and the eval baseline | Plans which load case leads and whether to add self-weight (advisory only — see Biject below). The **same model** also drives the baseline agent the reliability numbers are measured against | **Live.** All twenty eval scenarios and the 3× consistency run were executed against it; every turn is recorded in `demo/recordings/transcripts/` | `earl/analysis/orchestrator.py`, `earl/eval/` |
+| **PyNite** | 2 — fast gate | The open-source matrix-stiffness FEA library that computes every force EARL acts on. Not a hosted app, but it is the dependency the whole verdict rests on, so it is validated against published results before anything else is believed | **Live on every run**, offline | `earl/analysis/solver.py` |
+| **ngrok** | demo | Public URL for the browser demo so a judge can drive it from their own machine | **Live**, and the server is built for a public URL: it writes nothing, sends nothing, calls no model, serves five fixed files, caps bodies and rate-limits runs | `scripts/serve.py` |
 
 ---
 
@@ -155,7 +157,7 @@ credential is needed for the tests, the demo, the site, the eval replay or the
 end-to-end pipeline** — those all run offline against recorded data.
 
 ```bash
-python3 -m unittest discover -s tests -t . -q   # 801 tests, all offline, ~18s
+python3 -m unittest discover -s tests -t . -q   # 805 tests, all offline, ~18s
 
 python3 scripts/serve.py                        # THE SITE: drive it in a browser
 python3 scripts/serve.py --ngrok                # + a public URL for judges
@@ -174,6 +176,27 @@ With live credentials, two scripts touch the real APIs and say what they cost
 before they do: `scripts/onshape_branch_smoketest.py --confirm` (~7 Onshape
 calls, and one permanent version in the document's history — Onshape versions
 cannot be deleted) and `scripts/skyciv_smoke.py`.
+
+---
+
+## The site
+
+`scripts/serve.py` puts EARL behind a browser so someone else can drive it.
+Pick a member, thin it, and watch the dependency walk, the solve, the verdict
+and the change notice come back — then press **Approve it anyway** and watch
+`Decision.validate()` raise, which is the one thing on the page no model can
+promise. A separate tab carries the recorded eval, reported as measured.
+
+Every change composed in the browser is built by `earl.eval.scenarios` — the
+same module that builds the twenty eval scenarios — and run through
+`earl.pipeline.run_pipeline`. There is no demo-only shortcut behind the form,
+and the threshold floor is not re-implemented in the web layer: a request that
+tries to lower it reaches `gate.resolve_threshold` and is refused there.
+
+`--ngrok` tunnels it (needs the `ngrok` binary and `NGROK_AUTHTOKEN` in
+`.env`). **That makes the URL public**, so the server is built for it — the
+threat model and what it therefore refuses to do are in
+[`earl/web/README.md`](earl/web/README.md).
 
 ---
 
@@ -204,7 +227,7 @@ every solve, and a failed check becomes `Outcome.ERROR`, never an approval and
 never a safety finding. A crashed solve and an unsafe structure are different
 things and the contract keeps them apart.
 
-**3. 801 tests, every one offline.** No test makes a live API call, so the
+**3. 805 tests, every one offline.** No test makes a live API call, so the
 suite is free to run and never spends the Onshape annual request budget.
 That includes a dedicated module for Biject's verdict logic, the contract
 guardrails, the walker's byte-identical determinism, the SkyCiv payload
@@ -260,10 +283,11 @@ is in [`earl/eval/README.md`](earl/eval/README.md).
 
 ### What the dry run caught that no test could
 
-Running the whole thing end to end found two things the suite structurally
-could not: SkyCiv had **never worked live** (every truss model rejected with
-110 `Iy should be > 0` errors — a truss section carries area only), now fixed;
-and Gmail credentials were empty, so `--send` raised. Both are reported in the
+Running the whole thing end to end found two things 760 green tests had not:
+SkyCiv had **never worked live** (every truss model rejected with 110
+`Iy should be > 0` errors — a truss section carries area only, and one of our
+own tests was asserting that broken payload), now fixed; and Gmail credentials
+were empty, so `--send` raised. Both are reported in the
 ECN and on stage rather than papered over. The pipeline is built for exactly
 this: **every stage after the gate degrades rather than aborts.** SkyCiv down,
 Gmail down, a renderer exception — each lands in `PipelineResult.notes` and,

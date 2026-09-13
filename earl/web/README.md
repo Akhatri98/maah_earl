@@ -26,6 +26,25 @@ of the terminal demo, on a button, live, on the judge's own change.
 **The eval.** The recorded Sprint 5A scoreboard and the consistency run,
 including the part where the baseline tied us. The page says so.
 
+## Getting the tunnel up
+
+    winget install Ngrok.Ngrok     # or brew install ngrok
+    ngrok update                   # winget ships 3.3.1; accounts need >= 3.20
+
+Put the token in `.env` as `NGROK_AUTHTOKEN`; `serve.py` hands it to
+`ngrok config add-authtoken` and never prints it. Two things that will
+otherwise cost you ten minutes:
+
+- **`winget` edits the PATH of shells started afterwards**, never the one you
+  installed from, so `ngrok` appears to be missing. `serve.py` looks in the
+  installer's own directories before believing that.
+- **An agent older than your account allows fails with `ERR_NGROK_121`** and
+  no tunnel, which looks identical to a hung start. `serve.py` reads the
+  agent's log and prints that error with the fix (`ngrok update`).
+
+On the free tier a first-time visitor sees ngrok's interstitial page and has
+to click through once before reaching the site.
+
 ## What it is built on
 
 | Layer | File | Owns |
