@@ -58,8 +58,10 @@ class PollTrigger:
             self.acknowledge(microversion)
             return None, None
         provenance = "live Onshape snapshot diff" if stored else "live Onshape initial baseline verification (no prior history)"
+        from .delivery import resolve_recipient
+        recipient = resolve_recipient(self.client, self.ledger)
         return ChangeSource(self.source_id, self.mode, microversion, graph=before, change=change,
-                            provenance=provenance), microversion
+                            provenance=provenance, recipient=recipient), microversion
 
     def acknowledge(self, cursor):
         if self.pending_snapshot is not None:

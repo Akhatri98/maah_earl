@@ -89,7 +89,7 @@ class LiveTriggerTests(unittest.TestCase):
 
     def test_poll_only_fetches_geometry_when_microversion_moves_and_is_pinned(self):
         trigger = PollTrigger(self.client, self.ledger)
-        with patch.object(self.client, "current_microversion", return_value="e"*24) as micro, patch.object(self.client, "get_assembly_definition", return_value=self.source.assembly) as assembly, patch.object(self.client, "get_variables", return_value=self.source.variables) as variables:
+        with patch.object(self.client, "current_microversion", return_value="e"*24) as micro, patch.object(self.client, "get_assembly_definition", return_value=self.source.assembly) as assembly, patch.object(self.client, "get_variables", return_value=self.source.variables) as variables, patch.object(self.client, "get_document", return_value={"owner": {}}):
             change, cursor = trigger.next_change()
             trigger.acknowledge(cursor)
             self.assertIsNone(trigger.next_change()[0])

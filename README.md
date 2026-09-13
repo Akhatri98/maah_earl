@@ -35,6 +35,12 @@ Onshape callback or populated live geometry was available to verify.
 See [Onshape setup](docs/ONSHAPE_SETUP.md) for the exact model convention,
 webhook configuration, and conservative polling limits.
 
+For a trusted live watcher, escalation and cleared notices use the existing
+Gmail sender automatically. They require `--allow-live`, `DEMO_MODE=false`,
+credentials, and real sender/recipient addresses. Failed sends remain
+`UNDELIVERED` in a persistent outbox and retry with backoff; `.eml` is kept.
+No Gmail send was verified live in this build. Fixture events never send.
+
 Open the live demo, choose **Thin m8: 8 in^2**, and click **Run structural
 check**. The member becomes thinner, the pipeline streams its work, and Biject
 escalates at **SF 0.478**, below the hard floor of 1.0. The ECN, email preview,

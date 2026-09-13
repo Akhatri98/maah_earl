@@ -60,6 +60,7 @@ class Watcher:
             state.update(running=True, mode=self.trigger.mode, last_tick=utcnow(),
                          lease_until=time.time() + self.interval + 120)
         try:
+            self.runner.retry_notifications()
             source, cursor = self.trigger.next_change()
             if source is not None:
                 result = self.runner.handle_change(source)
@@ -186,4 +187,6 @@ def run_watch(*, mode: str, interval: float | None = None, fixture_file: Path | 
         if list_hooks or unregister_id:
             print("No webhook administration performed; live access is disabled.", flush=True)
             return
-    Watcher(trigger, Runner(ledger, allow_live=allow_live), interval=interval or 2.0).run(ticks=ticks)
+    # Budgeted poll pacing lives in PollTrigger. Wake sooner for queued email retries.
+    heartbeat = min(interval, 30.0) if mode == "poll" and interval else interval or 2.0
+    Watcher(trigger, Runner(ledger, allow_live=allow_live), interval=heartbeat).run(ticks=ticks)

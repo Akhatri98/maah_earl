@@ -93,6 +93,44 @@ are tested with mocks shaped from current documentation, not real callbacks.
 On unavailable live triggers, a separate fixture source remains usable and is
 never reported as live CAD evidence.
 
+## Autonomous Delivery: Phase 3
+
+The trusted watcher calls the existing Gmail delivery boundary after the
+pipeline has finished with live sends disabled. The ledger, not a model,
+creates an outbox entry for each new escalation or recovery. A repeated
+incident reserves no second notice. Failed sends and incomplete live delivery
+configuration are `UNDELIVERED`, with the original `.eml` retained. Retry
+delays are 30, 60, 120 seconds and so on, capped at one hour, persisted across
+restart. The poll loop wakes for retry/heartbeat without spending CAD calls.
+Claims are leased before sending, so a crashed in-flight attempt can retry.
+Per-document notice order is preserved: a cleared notice waits behind its
+unconfirmed escalation. A normal identical violation never creates a new send.
+
+Each live send requires both the watcher's current explicit `--allow-live`
+and the stored event's live eligibility, plus the existing DEMO/credential/
+address checks. Synthetic and fallback sources are permanently local-only;
+starting with credentials later cannot turn those notices into outgoing mail.
+The pipeline trace describes its own local artifact stage; the ledger's
+outbox receipt is the separate authority for actual autonomous send status.
+
+The owner lookup uses the budgeted document endpoint and caches once per day.
+It accepts an explicitly returned owner email, never the creator/editor as a
+substitute. The currently published `BTOwnerInfo` schema does **not** promise
+an email field, so `GMAIL_NOTIFY_RECIPIENT` is normally required. No guessed
+owner API or OAuth consent flow was added. Unavailable lookup uses configured
+recipient data and is recorded. Private addresses are excluded from agent APIs.
+
+Delivery is **at least once, not exactly once**: Gmail may accept a message
+before a connection timeout hides its acknowledgment. Retries keep a stable
+Message-ID, but no Gmail duplicate-prevention guarantee is claimed. A confirmed
+Gmail acknowledgment is never erased by failure to write an extra local copy.
+Disk failure before MIME persistence prevents sending.
+
+**No Gmail credentials were available; no live send or live owner resolution
+was verified.** Tests exercise successful acknowledgments, absent credentials,
+connection failures, retry ordering/backoff/restart, and fixture isolation with
+mocked requests. The public demo saves local notices only.
+
 ## Baseline Protocol (Specified Before Evaluation)
 
 1. Freeze twenty scenario definitions before collecting either system's
@@ -190,7 +228,8 @@ experimental claim.
   demo mode cannot send Gmail or make live CAD/LLM/SkyCiv requests. No CAD
   branch creation, merge, or write implementation is part of this project.
   `responsible.engineer@example.com` is an explicit placeholder, not a resolved
-  CAD owner. A trusted operator can configure the actual recipient.
+  CAD owner. The live watcher accepts an explicit owner email when returned,
+  otherwise a trusted operator must configure the actual recipient.
 
 ## Solver Validation
 
@@ -357,8 +396,9 @@ claim, and cannot replace the canonical change description in the ECN.
 The baseline selector receives geometry, sections, material properties, loads,
 units, and thresholds, but no solved results or EARL affected-member hints.
 
-Public requests always disable live calls independently of environment flags.
-Trusted CLI calls additionally need `--live`, `DEMO_MODE=false`, and the
+Public demo/manual requests always disable live calls. The separate callback
+route requires authenticated scope and explicit operator enablement.
+Trusted CLI runs need `--live` (watchers use `--allow-live`), `DEMO_MODE=false`, and the
 corresponding credentials. Local output persistence is application code, not
 a model capability. The model sees structured data and no executable tools,
 file handles, Onshape client, or delivery callable. The capability test checks

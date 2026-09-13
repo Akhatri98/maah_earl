@@ -15,6 +15,8 @@ from pathlib import Path
 
 from earl.contracts import ChangeEvent, DependencyGraph, Outcome
 from earl.pipeline import run_pipeline
+from earl.delivery.notify import recipient_address
+from .delivery import dispatch
 from .state import Ledger, utcnow
 
 
@@ -78,9 +80,11 @@ class Runner:
         self.allow_live = allow_live
 
     def handle_change(self, source: ChangeSource) -> RunRecord:
-        fingerprint, run_id = source.fingerprint(), uuid.uuid4().hex
+        run_id = uuid.uuid4().hex
+        fingerprint = hashlib.sha256(f"{source.source_id}:{source.microversion}:invalid-input".encode()).hexdigest()
         result = None
         try:
+            fingerprint = source.fingerprint()
             if source.error:
                 raise ValueError(source.error)
             stream = run_pipeline(scenario=source.scenario, param=source.param, graph=source.graph,
@@ -111,38 +115,32 @@ class Runner:
                 if key in state["dedup"]:
                     record.notification_status = "SUPPRESSED"
                 else:
-                    record.notice, record.notification_status = "ESCALATION", "LOCAL"
+                    record.notice, record.notification_status = "ESCALATION", "PENDING"
                     state["dedup"][key] = {"run_id": run_id, "source_id": source.source_id}
                 state["open_escalations"][source.source_id] = run_id
             elif record.outcome == Outcome.APPROVED.value and source.source_id in state["open_escalations"]:
-                record.notice, record.notification_status = "CLEARED", "LOCAL"
+                record.notice, record.notification_status = "CLEARED", "PENDING"
                 del state["open_escalations"][source.source_id]
                 state["dedup"] = {k: v for k, v in state["dedup"].items() if v["source_id"] != source.source_id}
             if record.notice:
-                state["notifications"][run_id] = {"kind": record.notice, "status": "LOCAL", "attempts": 0,
-                                                   "source_id": source.source_id, "recipient": source.recipient,
-                                                   "next_retry": None}
+                state["notifications"][run_id] = {"kind": record.notice, "status": "PENDING", "attempts": 0,
+                                                   "source_id": source.source_id,
+                                                   "recipient": recipient_address(source.recipient), "next_retry": 0,
+                                                   "allow_live": bool(self.allow_live and source.mode in ("poll", "webhook")
+                                                                      and source.provenance.startswith("live Onshape")),
+                                                   "decision": result.decision.to_dict()}
             state["runs"].append(asdict(record))
             if source.mode != "fixture" and source.microversion:
                 state["last_microversion"] = source.microversion
 
-        if record.notice and result is not None:
-            # Phase 1: a distinct local notice, never a send. The structural ECN
-            # remains the unmodified pipeline's complete evidence artifact.
-            from email import policy
-            from email.parser import BytesParser
-            run_dir = self.out_root / "runs" / run_id
-            try:
-                message = BytesParser(policy=policy.SMTP).parsebytes((run_dir / "notification.eml").read_bytes())
-                message.replace_header("Subject", f"EARL {record.notice} | {record.description[:120]}")
-                (run_dir / "agent-notice.eml").write_bytes(message.as_bytes())
-            except OSError as exc:
-                with self.ledger.edit() as state:
-                    state["notifications"][run_id]["status"] = "UNDELIVERED"
-                    state["notifications"][run_id]["last_error"] = type(exc).__name__
-                    state["runs"][-1]["notification_status"] = "UNDELIVERED"
-                record.notification_status = "UNDELIVERED"
+        if record.notice:
+            self.retry_notifications()
+            job = self.ledger.read()["notifications"][run_id]
+            record.notification_status, record.notification_attempts = job["status"], job["attempts"]
         return record
+
+    def retry_notifications(self, *, now: float | None = None) -> int:
+        return dispatch(self.ledger, self.out_root, allow_live=self.allow_live, now=now)
 
 
 def handle_change(source: ChangeSource) -> RunRecord:
