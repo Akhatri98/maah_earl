@@ -27,9 +27,11 @@ python3 -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\acti
 pip install -r requirements.txt
 cp .env.example .env                                # fill in what you have; everything below runs without it
 
-python3 -m unittest discover -s tests -t . -q        # 723 tests, all offline
+python3 -m unittest discover -s tests -t . -q        # 801 tests, all offline
 
-python3 scripts/demo.py                              # THE DEMO: six acts, offline, ~4 min
+python3 scripts/serve.py                             # THE SITE: drive it in a browser
+python3 scripts/serve.py --ngrok                     # + a public URL for judges
+python3 scripts/demo.py                              # THE TALK: six acts, offline, ~4 min
 python3 scripts/demo.py --pause                      # stop between acts, for rehearsal
 python3 scripts/run_pipeline.py                      # the demo change, every stage, offline
 python3 scripts/run_pipeline.py --onshape-fixture    # Track A's graph builder on the recorded Onshape read
@@ -42,6 +44,24 @@ python3 scripts/contract_selfcheck.py                # the shared contracts and 
 
 Without `--send` the e-mail is written to `artifacts/demo/outbox/*.eml`, byte
 for byte what Gmail would receive.
+
+## The site
+
+`scripts/serve.py` puts EARL behind a browser so someone else can drive it.
+Pick a member, thin it, and watch the dependency walk, the solve, the verdict
+and the change notice come back — then press **Approve it anyway** and watch
+`Decision.validate()` raise, which is the one thing on the page no model can
+promise. There is also a tab for the recorded eval, reported as measured.
+
+Every change composed in the browser is built by `earl.eval.scenarios`, the
+same module that builds the twenty eval scenarios, and run through
+`earl.pipeline.run_pipeline`. There is no demo-only shortcut behind the form.
+
+`--ngrok` tunnels it (needs the `ngrok` binary and `NGROK_AUTHTOKEN` in
+`.env`). **That makes the URL public**, so the server is built for it: it
+writes nothing, sends nothing, calls no model, serves a fixed list of five
+files, caps request bodies, and rate-limits runs. `earl/web/README.md` has
+the details.
 
 ## The demo change
 
@@ -61,6 +81,7 @@ domino the project exists to catch.
 | `earl/artifacts` | SkyCiv client, escalation, cross-check | B |
 | `earl/delivery` | ECN template and renderers, Gmail delivery | A |
 | `earl/eval` | the 20-scenario replay and the baseline agent (Sprint 5A) | A |
+| `earl/web` | the browser demo: change bench, scoreboard, enforcement (Sprint 7) | A |
 | `earl/pipeline.py` | the end-to-end wire (Sprint 4) | both |
 
 ## Conventions that bite

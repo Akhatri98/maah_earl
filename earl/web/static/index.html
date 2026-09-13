@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EARL — Engineering Analysis &amp; Rating Ledger</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">EARL</span>
+    <span class="sub">Engineering Analysis &amp; Rating Ledger</span>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab is-on" data-tab="bench" role="tab" aria-selected="true">Change bench</button>
+    <button class="tab" data-tab="eval" role="tab" aria-selected="false">The eval</button>
+    <button class="tab" data-tab="about" role="tab" aria-selected="false">How it works</button>
+  </nav>
+</header>
+
+<!-- ===================== BENCH ===================== -->
+<main id="tab-bench" class="tab-panel is-on">
+
+  <aside class="bench">
+    <h2>Make a CAD change</h2>
+    <p class="hint">
+      This is the 10-bar truss benchmark at its published optimum with a 10&nbsp;%
+      design margin. Edit it the way an engineer would, then ask EARL whether
+      the change ships.
+    </p>
+
+    <form id="change-form" autocomplete="off">
+      <label class="field">
+        <span>What kind of change?</span>
+        <select id="kind" name="kind">
+          <option value="resize">Resize a member</option>
+          <option value="remove">Remove a member</option>
+          <option value="add_load">Add a point load</option>
+          <option value="move_load">Move a load</option>
+          <option value="variable_load">Edit the design-load variable</option>
+          <option value="variable_area">Edit the bar-area variable</option>
+        </select>
+      </label>
+
+      <div class="field-group" data-for="resize remove">
+        <label class="field">
+          <span>Member</span>
+          <select id="member_id" name="member_id"></select>
+        </label>
+      </div>
+
+      <div class="field-group" data-for="resize">
+        <label class="field">
+          <span>New cross-section <em id="area-echo">—</em></span>
+          <input type="range" id="area_range" min="0.05" max="40" step="0.05">
+        </label>
+        <label class="field inline">
+          <span>in²</span>
+          <input type="number" id="area_in2" name="area_in2" step="0.001">
+        </label>
+        <p class="note" id="area-base"></p>
+      </div>
+
+      <div class="field-group" data-for="add_load">
+        <label class="field">
+          <span>At node</span>
+          <select id="node_id" name="node_id"></select>
+        </label>
+        <label class="field inline">
+          <span>Downward (kip)</span>
+          <input type="number" id="down_kips" name="down_kips" value="50" step="1">
+        </label>
+        <label class="field inline">
+          <span>Lateral +X (kip)</span>
+          <input type="number" id="east_kips" name="east_kips" value="0" step="1">
+        </label>
+      </div>
+
+      <div class="field-group" data-for="move_load">
+        <label class="field">
+          <span>Move the load from</span>
+          <select id="from_node" name="from_node"></select>
+        </label>
+        <label class="field">
+          <span>to</span>
+          <select id="to_node" name="to_node"></select>
+        </label>
+      </div>
+
+      <div class="field-group" data-for="variable_load">
+        <label class="field inline">
+          <span>designLoad (kip)</span>
+          <input type="number" id="after_kips" name="after_kips" value="120" step="5">
+        </label>
+        <p class="note">Applied at both loaded nodes. The design value is 100 kip.</p>
+      </div>
+
+      <div class="field-group" data-for="variable_area">
+        <label class="field inline">
+          <span>barArea ×</span>
+          <input type="number" id="factor" name="factor" value="0.8" step="0.05">
+        </label>
+        <p class="note">Scales every bar in the assembly at once.</p>
+      </div>
+
+      <hr>
+
+      <label class="field inline threshold">
+        <span>Safety-factor threshold</span>
+        <input type="number" id="threshold" name="threshold" value="1.0" step="0.1">
+      </label>
+      <p class="note">
+        You can raise the bar. Try lowering it below 1.0 and watch what the
+        code does.
+      </p>
+
+      <button type="submit" id="run" class="primary">Run EARL</button>
+    </form>
+
+    <h3>Or start from one of ours</h3>
+    <div class="presets" id="presets"></div>
+  </aside>
+
+  <section class="results" id="results">
+    <div class="placeholder" id="placeholder">
+      <p class="big">Nothing has been run yet.</p>
+      <p>
+        Thin member <b>m7</b> from 8.203&nbsp;in² to 6&nbsp;in² — the change
+        our demo opens on — or invent your own. Either way the same pipeline
+        runs: dependency walk → PyNite solve → threshold in code → change
+        notice.
+      </p>
+    </div>
+
+    <div id="output" hidden>
+
+      <!-- verdict -->
+      <div class="verdict" id="verdict">
+        <div class="verdict-main">
+          <span class="badge" id="verdict-badge">—</span>
+          <p class="verdict-change" id="verdict-change"></p>
+        </div>
+        <dl class="verdict-facts" id="verdict-facts"></dl>
+      </div>
+
+      <!-- the domino callout -->
+      <div class="domino" id="domino" hidden></div>
+
+      <div class="grid">
+        <!-- picture -->
+        <section class="card wide">
+          <h3><span class="step">1</span> The structure, after the change</h3>
+          <div class="svg-wrap" id="svg-wrap"></div>
+        </section>
+
+        <!-- walk -->
+        <section class="card">
+          <h3><span class="step">2</span> The dependency walk</h3>
+          <p class="card-note">
+            A fixed breadth-first traversal from what the change names. Not a
+            model decision — it crosses every edge by construction.
+          </p>
+          <ul class="rings" id="rings"></ul>
+        </section>
+
+        <!-- enforcement -->
+        <section class="card">
+          <h3><span class="step">3</span> The part a model cannot promise</h3>
+          <p class="card-note" id="tamper-intro"></p>
+          <button id="tamper" class="danger">Approve it anyway</button>
+          <pre class="raise" id="tamper-out" hidden></pre>
+        </section>
+
+        <!-- members -->
+        <section class="card wide">
+          <h3><span class="step">4</span> Every member, solved</h3>
+          <p class="card-note">
+            Capacity comes from the 25&nbsp;ksi design allowable, not the
+            50&nbsp;ksi yield. Safety factor = allowable ÷ stress.
+          </p>
+          <div class="table-wrap">
+            <table class="members">
+              <thead>
+                <tr>
+                  <th>member</th><th>stress before</th><th>stress after</th>
+                  <th>safety factor</th><th>hops</th><th>reached via</th><th>verdict</th>
+                </tr>
+              </thead>
+              <tbody id="members"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ECN -->
+        <section class="card wide">
+          <h3><span class="step">5</span> The change notice</h3>
+          <p class="card-note" id="ecn-note"></p>
+          <pre class="ecn" id="ecn"></pre>
+        </section>
+
+        <section class="card wide" id="notes-card" hidden>
+          <h3>Run notes</h3>
+          <ul class="notes" id="notes"></ul>
+        </section>
+      </div>
+    </div>
+
+    <div class="refusal" id="refusal" hidden>
+      <h3 id="refusal-title">The code refused this run</h3>
+      <pre id="refusal-detail"></pre>
+      <p class="note" id="refusal-note"></p>
+    </div>
+  </section>
+</main>
+
+<!-- ===================== EVAL ===================== -->
+<section id="tab-eval" class="tab-panel">
+  <div class="prose">
+    <h2>Twenty scenarios, and what they actually showed</h2>
+    <p>
+      Our pitch said a bare LLM would be caught <em>missing something, or
+      inconsistent across runs</em>. We built the experiment to test both
+      halves, ran it live on Meta Muse, and recorded every transcript.
+    </p>
+    <div id="board"></div>
+    <p class="finding" id="finding"></p>
+    <h3>Was it at least inconsistent?</h3>
+    <pre class="ecn" id="consistency"></pre>
+    <h3>Why the tie, as far as we can tell</h3>
+    <p>
+      One <code>solve_load_case</code> call returns all ten members' stresses.
+      On a truss this small, <em>“check everything downstream”</em> and
+      <em>“check everything”</em> are the same action, so the dependency walk
+      has nothing to find that brute force does not. The traversal advantage
+      is real in principle and is <b>not</b> demonstrated by this experiment.
+    </p>
+    <p>
+      We could have handed the baseline a one-member-at-a-time solver and
+      manufactured a gap. That is the exact dishonesty this project exists to
+      catch, so we did not.
+    </p>
+    <h3>What the run does establish</h3>
+    <ul>
+      <li>22 of 22 unsafe members caught, zero false alarms, the same answer on all 60 runs — ours by construction, and provably so.</li>
+      <li>9 of the 20 changes were genuinely safe and were approved. This is not a system that escalates everything and calls it caution.</li>
+      <li>And the guarantee on the bench tab, which no score can express: the model matched us at finding problems and still cannot decide that one ships.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== ABOUT ===================== -->
+<section id="tab-about" class="tab-panel">
+  <div class="prose">
+    <h2>How it works</h2>
+    <pre class="flow">Onshape change ─▶ DependencyGraph ─▶ walker ─▶ PyNite + Biject ─▶ Decision
+                  (earl.ingestion)             (earl.analysis)
+                                                     │ escalated
+                                                     ▼
+                                  SkyCiv report + cross-check (earl.artifacts)
+                                                     │
+                                                     ▼
+                              ECN ─▶ Gmail / outbox (earl.delivery)</pre>
+
+    <h3>What this page is really running</h3>
+    <p>
+      Every change you compose is built by <code>earl.eval.scenarios</code> —
+      the same module that builds our twenty eval scenarios — and run through
+      <code>earl.pipeline.run_pipeline</code>, the same entry point the
+      command-line demo uses. There is no demo-only shortcut behind this form.
+    </p>
+
+    <h3>What it deliberately does not do</h3>
+    <ul>
+      <li><b>No model is called.</b> A run here is a dependency walk and a solve. The eval numbers on the other tab come from transcripts recorded in Sprint&nbsp;5A, not from a live call.</li>
+      <li><b>Nothing is written, sent, or merged.</b> Stage&nbsp;3 (SkyCiv) and Stage&nbsp;4 (Gmail) are not a browser's to trigger. The notice is built and rendered for you to read.</li>
+      <li><b>The threshold floor is not a setting.</b> You can raise the bar from this page. Lowering it below 1.0 reaches the same code a misconfigured <code>.env</code> would, and is refused there.</li>
+    </ul>
+
+    <h3>The conventions that bite</h3>
+    <ul>
+      <li><b>SI everywhere</b> inside the contracts (m, N, Pa). The benchmark's imperial numbers are converted once.</li>
+      <li><b>Two stresses on a material.</b> <code>yield_strength</code> is 50 ksi; <code>allowable_stress</code> is the 25 ksi design allowable, and capacity comes from the allowable.</li>
+      <li><b>Statically indeterminate.</b> That is why thinning one member pushes load into members nobody edited — and why nobody can tell by looking.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <span id="foot-status">ready</span>
+  <span class="spacer"></span>
+  <span>10-bar truss benchmark — Haftka &amp; Gürdal / Rajan · PyNite · offline</span>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>

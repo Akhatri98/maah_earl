@@ -101,6 +101,37 @@ change ships."*
 
 760 tests pass.
 
+### Sprint 7 — The demo site (Track A) — done
+
+Not in the original plan. Added because the pitch deck and a terminal are
+worse than letting a judge break the thing themselves, and because the
+deployment story was "ngrok" with nothing to tunnel.
+
+`earl/web/` (`api.py`, `app.py`, `static/`) plus `scripts/serve.py`:
+
+    python3 scripts/serve.py --ngrok
+
+A change bench where anyone can resize a member, delete one, add or move a
+load, or edit a variable, and watch the walk, the solve, the verdict, the
+truss and the change notice come back. **Act 4 is a button** — "Approve it
+anyway" takes the Decision that run produced, sets APPROVED, calls
+`validate()` and prints the `ValueError`. A third tab carries the Sprint 5A
+scoreboard, tie included.
+
+Two decisions worth recording:
+
+- **Every change is built by `earl.eval.scenarios`** — the module that builds
+  the twenty eval scenarios — and run through `pipeline.run_pipeline`. A
+  judge is driving the tested thing, not a demo-only imitation of it.
+- **The threshold floor is not re-implemented in the web layer.** A request
+  that tries to lower it reaches `gate.resolve_threshold` and is refused
+  there. A rule enforced in two places is a rule that can disagree with
+  itself, and this is the rule the whole project rests on.
+
+`http.server`, no fourth dependency. The public-URL threat model and what the
+server therefore refuses to do are in `earl/web/README.md`; 41 new tests
+(801 total) cover it, including nine spellings of `../.env` on a raw socket.
+
 ## Diagram
 
 ```mermaid
@@ -132,4 +163,5 @@ flowchart TD
 
     C1 --> S6["Sprint 6 — Demo polish & dry run<br/>(both)"]
     C2 --> S6
+    S6 --> S7["Sprint 7 — The demo site<br/>change bench + ngrok (A)"]
 ```
