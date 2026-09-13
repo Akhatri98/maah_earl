@@ -33,19 +33,21 @@ def benchmark_graph():
 def validate_benchmark() -> dict:
     from .solver import _solve_local
     from .sanity import check
-    expected = json.loads((Path(__file__).resolve().parents[2] / "tests" / "fixtures" /
-                           "benchmark" / "ten_bar.json").read_text())
+    references = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "benchmark"
+    expected = json.loads((references / "ten_bar.json").read_text())
+    published = json.loads((references / "published_reference.json").read_text())
     graph = benchmark_graph()
     solved = _solve_local(graph, "lc_1")
     rtol = expected["relative_tolerance"]
-    for mid, psi in expected["stress_psi"].items():
-        actual = solved.stresses[mid] / PSI
-        if not isclose(actual, psi, rel_tol=rtol, abs_tol=1e-5):
-            raise AssertionError(f"benchmark stress {mid}: {actual} != {psi} psi")
-    for nid, reference in expected["displacements_in"].items():
-        for actual, wanted in zip(solved.displacements[nid][:2], reference):
-            if not isclose(actual / IN, wanted, rel_tol=rtol, abs_tol=1e-8):
-                raise AssertionError(f"benchmark displacement {nid}: {actual / IN} != {wanted} in")
+    for reference in (expected, published):
+        for mid, psi in reference["stress_psi"].items():
+            actual = solved.stresses[mid] / PSI
+            if not isclose(actual, psi, rel_tol=rtol, abs_tol=1e-5):
+                raise AssertionError(f"benchmark stress {mid}: {actual} != {psi} psi")
+        for nid, values in reference["displacements_in"].items():
+            for actual, wanted in zip(solved.displacements[nid][:2], values):
+                if not isclose(actual / IN, wanted, rel_tol=rtol, abs_tol=1e-8):
+                    raise AssertionError(f"benchmark displacement {nid}: {actual / IN} != {wanted} in")
     checks = check(graph, solved)
     if not (checks.equilibrium_ok and checks.linearity_ok):
         raise AssertionError("benchmark sanity checks failed")
@@ -53,4 +55,5 @@ def validate_benchmark() -> dict:
             "stress_psi": {m: s / PSI for m, s in solved.stresses.items()},
             "displacements_in": {n: [x / IN for x in d[:2]]
                                  for n, d in solved.displacements.items()},
-            "sanity_checks": checks.to_dict(), "relative_tolerance": rtol}
+            "sanity_checks": checks.to_dict(), "relative_tolerance": rtol,
+            "published_reference_sha256": published["source_sha256"]}

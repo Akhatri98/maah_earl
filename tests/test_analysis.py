@@ -3,8 +3,10 @@
 import unittest
 import contextlib
 import io
+import json
 from copy import deepcopy
 from math import pi
+from pathlib import Path
 from unittest.mock import patch
 
 from earl.analysis.benchmark import benchmark_graph, validate_benchmark
@@ -15,6 +17,7 @@ from earl.contracts import SupportType
 from earl.units import IN, PSI
 from scripts.benchmark_reference import reference
 from scripts.contract_selfcheck import build_graph
+from scripts.published_reference_selfcheck import SOURCE_SHA256
 
 
 class SolverTests(unittest.TestCase):
@@ -31,6 +34,18 @@ class SolverTests(unittest.TestCase):
         for mid, expected in other["stress_psi"].items():
             self.assertAlmostEqual(self.solved.stresses[mid] / PSI, expected, places=6)
         for nid, expected in other["displacements_in"].items():
+            for actual, target in zip(self.solved.displacements[nid], expected):
+                self.assertAlmostEqual(actual / IN, target, places=9)
+
+    def test_matches_recorded_unmodified_book_reference_execution(self):
+        path = Path(__file__).parent / "fixtures" / "benchmark" / "published_reference.json"
+        reference = json.loads(path.read_text())
+        self.assertFalse(reference["source_modified"])
+        self.assertEqual(reference["source_sha256"], SOURCE_SHA256)
+        self.assertEqual(validate_benchmark()["published_reference_sha256"], SOURCE_SHA256)
+        for mid, expected in reference["stress_psi"].items():
+            self.assertAlmostEqual(self.solved.stresses[mid] / PSI, expected, places=6)
+        for nid, expected in reference["displacements_in"].items():
             for actual, target in zip(self.solved.displacements[nid], expected):
                 self.assertAlmostEqual(actual / IN, target, places=9)
 

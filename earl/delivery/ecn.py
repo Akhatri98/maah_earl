@@ -24,12 +24,16 @@ def text(decision: Decision) -> str:
         Outcome.ERROR: "HOLD. Analysis failed; no safety finding is made. Resolve the analysis error and rerun.",
     }[decision.outcome]
     reason = decision.escalation_reason.value if decision.escalation_reason else decision.error_message or "all evaluated members meet the target"
+    edit = "Requested engineering edit: " + decision.change_description
+    if decision.narrative and decision.narrative_provenance.startswith("provider"):
+        edit += "\nNon-authoritative change summary: " + decision.narrative
     return "\n\n".join([
         f"ENGINEERING CHANGE NOTICE | {decision.id}\n{decision.outcome.value.upper()}",
-        decision.narrative or decision.change_description, evidence, f"Reason: {reason}",
+        edit, evidence, f"Reason: {reason}",
         f"Reported below target: {', '.join(decision.violating_member_ids) or 'none'}.",
         action, reference,
         f"Independent cross-check: {'performed' if decision.cross_check.performed else 'NOT PERFORMED'}. {decision.cross_check.note or ''}",
+        f"Evaluated: {decision.evaluated_at or 'not recorded'}. Solver: {decision.solver} {decision.solver_version or 'unavailable'}. Load case: {decision.load_case_id or 'not selected'}. Source: {decision.source_provenance}.",
         "Basis: linear elastic, axial-only, pin-jointed model; yield and ideal Euler buckling with K=1. Not an AISC/ASCE code-compliance assessment.",
         "Onshape Simulation already provides assembly analysis, stresses, displacements, and safety factors. SkyCiv supplies analysis and reports. EARL adds enforcement, notification, and the per-change decision record, not better physics.",
     ])

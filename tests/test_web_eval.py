@@ -1,5 +1,6 @@
 """Public transport limits, shared pipeline, and frozen evaluation evidence."""
 
+import asyncio
 import json
 import os
 import tempfile
@@ -53,6 +54,21 @@ class EvalTests(unittest.TestCase):
         truth = next(c for c in cached_results()["scenarios"] if c["id"] == "add-load-n2-80")
         self.assertEqual(set(complete.violating_member_ids), set(truth["ground_truth_failing_ids"]))
 
+    def test_baseline_provider_gets_the_same_physical_model_without_result_hints(self):
+        source = fixture_inputs()
+        before = map_assembly(source.assembly, source.variables)
+        before.change = make_change(before, "thin-compression")
+        after = before.change.apply(before)
+        with patch("earl.eval.baseline.llm._provider", return_value=None) as provider:
+            select_members(before, after, allow_live=True)
+        payload = provider.call_args.args[1]
+        for side, graph in (("before_model", before), ("after_model", after)):
+            for field in ("nodes", "members", "sections", "materials", "load_cases", "units", "hard_floor", "design_target"):
+                self.assertEqual(payload[side][field], graph.to_dict()[field])
+            self.assertNotIn("affected_member_ids", payload[side])
+            self.assertNotIn("member_results", payload[side])
+            self.assertNotIn("stresses", payload[side])
+
 
 class WebTests(unittest.TestCase):
     def setUp(self):
@@ -104,6 +120,13 @@ class WebTests(unittest.TestCase):
         self.assertEqual(response.json()["change"]["field_name"], "area")
         self.assertEqual(response.json()["provenance"], "rule-based parser")
 
+    def test_oversized_edit_body_is_rejected_before_parsing(self):
+        with patch("earl.web.interpret_change") as parse:
+            response = self.client.post("/api/parse", json={"text": "x" * 20000})
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        parse.assert_not_called()
+
     def test_judge_numeric_values_are_clamped_not_trusted(self):
         graph = web.demo_graph()
         large = make_change(graph, "custom-area", param={"area_in2": 1e100})
@@ -140,3 +163,22 @@ class WebTests(unittest.TestCase):
             (trace_dir / f"{run_id}.jsonl").write_text(json.dumps(payload) + "\n")
             with self.assertRaises(ValueError):
                 self.client.get(f"/api/run/{run_id}/trace")
+
+
+class BodyLimitTests(unittest.IsolatedAsyncioTestCase):
+    async def test_slow_body_cannot_hold_a_request_open_without_limit(self):
+        sent = []
+
+        async def unexpected_app(scope, receive, send):
+            self.fail("An incomplete body reached the parser")
+
+        async def receive():
+            await asyncio.sleep(1)
+            return {"type": "http.request", "body": b"", "more_body": True}
+
+        async def send(message):
+            sent.append(message)
+
+        limited = web.BodyLimit(unexpected_app, read_timeout=0.001)
+        await limited({"type": "http", "method": "POST"}, receive, send)
+        self.assertEqual(sent[0]["status"], 408)

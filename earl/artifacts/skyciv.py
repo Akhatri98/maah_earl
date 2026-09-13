@@ -90,10 +90,11 @@ def parse_response(response: dict, *, fingerprint: str, member_id: str,
     if response.get("model_fingerprint") != fingerprint or response.get("member_id") != member_id:
         raise ValueError("recorded SkyCiv response does not match this exact model/member")
     raw = response["raw_response"]
-    if any(function.get("status") != 0 for function in raw.get("functions", [])):
-        raise ValueError("one or more SkyCiv functions failed")
+    if any(function.get("status") != 0 and function.get("function") != "S3D.results.getAnalysisReport"
+           for function in raw.get("functions", [])):
+        raise ValueError("one or more SkyCiv analysis functions failed")
     values = _function(raw, "S3D.results.fetchMemberResult")
-    if not isinstance(values, list) or len(values) != 1 or not values[0]:
+    if not isinstance(values, list) or len(values) != 1 or not isinstance(values[0], list) or not values[0]:
         raise ValueError("expected one load combination of member station results")
     # SkyCiv's explicitly selected force unit is kN. Compare demand magnitudes;
     # the distinct PyNite axial sign convention is not evidence of disagreement.
@@ -101,23 +102,35 @@ def parse_response(response: dict, *, fingerprint: str, member_id: str,
     if not all(isfinite(value) for value in stations):
         raise ValueError("nonfinite SkyCiv station result")
     force = max(abs(value) for value in stations) * 1000
-    report_data = _function(raw, "S3D.results.getAnalysisReport")
-    link = report_data.get("view_link") or report_data.get("download_link")
-    if not link or not _trusted_report_url(link):
-        raise ValueError("SkyCiv returned no trusted report URL")
-    report = SkyCivReport(report_id=f"S3D-{fingerprint[:12]}", url=link,
-                         model_fingerprint=fingerprint, provenance=provenance,
-                         note="Linear static analysis, not an AISC/ASCE design check.")
     cross = CrossCheck(member_id=member_id, pynite_value=abs(pynite_force), skyciv_value=force,
                        provenance=provenance,
                        note="Governing axial demand magnitude (N), tolerance 5%; sign is not cross-checked.")
     cross.evaluate()
+    link = None
+    try:
+        report_data = _function(raw, "S3D.results.getAnalysisReport")
+        candidate = report_data.get("view_link") or report_data.get("download_link")
+        if _trusted_report_url(candidate):
+            link = candidate
+    except (ValueError, KeyError, TypeError, AttributeError):
+        pass
+    note = "Linear static analysis, not an AISC/ASCE design check."
+    if link is None:
+        note += " Report/PDF unavailable or link rejected; numerical cross-check retained."
+    report = SkyCivReport(report_id=f"S3D-{fingerprint[:12]}", url=link,
+                         model_fingerprint=fingerprint, provenance=provenance, note=note)
     return report, cross
 
 
 def _trusted_report_url(url: str) -> bool:
-    parsed = urlsplit(url)
-    return parsed.scheme == "https" and parsed.hostname in {"skyciv.com", "solver.skyciv.com", "platform.skyciv.com"}
+    if not isinstance(url, str):
+        return False
+    try:
+        parsed = urlsplit(url)
+        return (parsed.scheme == "https" and not parsed.username and not parsed.password and
+                parsed.hostname in {"skyciv.com", "solver.skyciv.com", "platform.skyciv.com"})
+    except ValueError:
+        return False
 
 
 def _download_report(url: str, destination: Path) -> None:
@@ -173,16 +186,20 @@ def create_report(graph: DependencyGraph, decision: Decision, run_dir: Path, *,
             recorded = {"model_fingerprint": fingerprint, "member_id": member.member_id, "raw_response": response.json()}
             report, cross = parse_response(recorded, fingerprint=fingerprint, member_id=member.member_id,
                                            pynite_force=member.axial_force_after, provenance="live SkyCiv API")
-            recording.parent.mkdir(parents=True, exist_ok=True)
-            recording.write_text(json.dumps(recorded, indent=2, allow_nan=False), encoding="utf-8")
-            report_data = _function(recorded["raw_response"], "S3D.results.getAnalysisReport")
             try:
+                recording.parent.mkdir(parents=True, exist_ok=True)
+                recording.write_text(json.dumps(recorded, indent=2, allow_nan=False), encoding="utf-8")
+            except (OSError, ValueError, TypeError) as exc:
+                LOG.warning("SkyCiv recording unavailable (%s); numerical cross-check retained", type(exc).__name__)
+                report.note += " Exact API response could not be recorded locally."
+            try:
+                report_data = _function(recorded["raw_response"], "S3D.results.getAnalysisReport")
                 pdf = run_dir / "skyciv.pdf"
                 _download_report(report_data.get("download_link", report.url), pdf)
                 report.local_path = str(pdf)
             except Exception as exc:
                 LOG.warning("Report download unavailable (%s); numerical cross-check retained", type(exc).__name__)
-            _write_reference(run_dir, report, cross)
+            _preserve_reference(run_dir, report, cross)
             return report, cross
         except Exception as exc:
             LOG.warning("Optional SkyCiv call unavailable (%s); checking recorded fixtures", type(exc).__name__)
@@ -193,7 +210,7 @@ def create_report(graph: DependencyGraph, decision: Decision, run_dir: Path, *,
             report, cross = parse_response(json.loads(path.read_text()), fingerprint=fingerprint,
                                            member_id=member.member_id, pynite_force=member.axial_force_after,
                                            provenance="recorded SkyCiv API response (exact model)")
-            _write_reference(run_dir, report, cross)
+            _preserve_reference(run_dir, report, cross)
             return report, cross
         except (ValueError, KeyError, TypeError, OSError):
             LOG.warning("Ignoring invalid or mismatched SkyCiv recording")
@@ -222,10 +239,20 @@ def _write_reference(run_dir: Path, report: SkyCivReport, cross: CrossCheck) -> 
         link_label = "Open locally recorded PDF" if report.local_path else "Open SkyCiv report (network required)"
     else:
         link, link_label = "/api/fixture/skyciv", "Open locally recorded example PDF (different model)"
+    report_anchor = f'<a href="{e(link, quote=True)}">{link_label}</a>' if link else "No report link available; the numerical comparison is retained in the Decision."
     body = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>EARL report reference</title><style>body{{font:15px system-ui;max-width:760px;margin:40px auto;padding:0 24px;color:#242a2c;line-height:1.6}}a{{color:#176d55}}aside{{border-left:3px solid #b77914;padding:12px 18px;background:#fff8e9}}code{{overflow-wrap:anywhere}}</style>
 <h1>Report reference</h1><p><code>{e(report.report_id)}</code></p><aside><strong>{e(report.provenance)}</strong><p>{e(report.note or '')}</p></aside>
 <p>Independent numerical cross-check: <strong>{'performed' if cross.performed else 'NOT PERFORMED'}</strong>.</p>
-<p>{e(cross.note or '')}</p><p><a href="{e(link, quote=True)}">{link_label}</a></p>
+<p>{e(cross.note or '')}</p><p>{report_anchor}</p>
 <p>Onshape Simulation already provides assembly linear static analysis, stress, displacement, and safety factors. SkyCiv provides analysis and reports. EARL adds the acceptance gate, notification, and decision record, not better physics.</p></html>"""
     (run_dir / "report.html").write_text(body, encoding="utf-8")
+
+
+def _preserve_reference(run_dir: Path, report: SkyCivReport, cross: CrossCheck) -> None:
+    """Artifact persistence must not discard a completed numerical finding."""
+    try:
+        _write_reference(run_dir, report, cross)
+    except OSError as exc:
+        LOG.warning("Report reference could not be written (%s); cross-check retained", type(exc).__name__)
+        report.note = (report.note or "") + " Local report-reference write failed; comparison retained in the Decision."

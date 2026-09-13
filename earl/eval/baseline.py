@@ -27,15 +27,22 @@ class Selection:
     rationale: str
 
 
+def _physical_model(graph: DependencyGraph) -> dict:
+    model = graph.to_dict()
+    return {key: model[key] for key in ("nodes", "members", "sections", "materials", "load_cases",
+                                       "units", "hard_floor", "design_target")}
+
+
 def select_members(before: DependencyGraph, after: DependencyGraph, *, allow_live: bool = False) -> Selection:
     before.validate()
     after.validate()
     ids = {m.id for m in after.members}
+    delta = {key: value for key, value in after.change.to_dict().items()
+             if key not in {"description", "value_before", "value_after"}}
     answer = llm._provider("baseline_select", {
-        "change": after.change.to_dict(),
-        "before_members": [m.to_dict() for m in before.members],
-        "after_members": [m.to_dict() for m in after.members],
-        "nodes": [n.to_dict() for n in after.nodes],
+        "change": delta,
+        "before_model": _physical_model(before),
+        "after_model": _physical_model(after),
     }, "Select which surviving members to request numerical verification for after this edit. "
        "You may select any subset, including every member. Return JSON {member_ids: [IDs]}. "
        "Only select verification scope; do not predict results or make acceptance decisions.", allow_live=allow_live)

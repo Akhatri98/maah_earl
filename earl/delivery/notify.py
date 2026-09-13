@@ -14,8 +14,10 @@ import logging
 import os
 import re
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from email.policy import SMTP
+from email.utils import format_datetime
 from pathlib import Path
 
 import requests
@@ -57,6 +59,13 @@ def deliver(decision: Decision, run_dir: Path, *, allow_live: bool = False) -> D
     plain = ecn.text(decision)
     message = EmailMessage(policy=SMTP)
     message["From"], message["To"], message["Subject"] = sender, recipient, subject
+    try:
+        issued_at = datetime.fromisoformat(decision.evaluated_at) if decision.evaluated_at else datetime.now(timezone.utc)
+        if issued_at.tzinfo is None:
+            issued_at = issued_at.replace(tzinfo=timezone.utc)
+    except ValueError:
+        issued_at = datetime.now(timezone.utc)
+    message["Date"] = format_datetime(issued_at)
     message["Message-ID"] = f"<{decision.id}@earl.local>"
     message.set_content(plain)
     message.add_alternative(rendered, subtype="html")

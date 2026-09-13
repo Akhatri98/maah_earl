@@ -90,7 +90,19 @@ def main():
         expect(page.locator("#baseline-grid button")).to_have_count(20)
         report["checks"].append("initial approval, six nodes, ten bars, 40 scoreboard cells")
         page.screenshot(path=str(out / "desktop-approved.png"), full_page=True)
+        page.emulate_media(reduced_motion="no-preference")
+        page.evaluate("""() => {
+            window.earlColorTransitions = [];
+            document.addEventListener('transitionrun', event => {
+                if (event.propertyName === 'stroke' && event.target.classList.contains('member-line'))
+                    window.earlColorTransitions.push(document.querySelector('#stage-gate').className);
+            });
+        }""")
         run_case(page, "thin-compression")
+        page.wait_for_function("window.earlColorTransitions.length >= 10")
+        assert all(status == "passed" for status in page.evaluate("window.earlColorTransitions"))
+        page.emulate_media(reduced_motion="reduce")
+        report["checks"].append("all ten member stroke transitions begin only after the gate passes")
         expect(page.locator("#verdict")).to_have_text("ESCALATED")
         expect(page.locator("#governing")).to_contain_text("0.48")
         expect(page.locator('.member-group[data-mid="m8"] .member-line')).to_have_attribute("stroke", "#c13c48")

@@ -7,6 +7,7 @@ at once. The eval route reads committed JSON; no background run registry.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 import os
@@ -35,6 +36,45 @@ COMPUTE_SLOTS = BoundedSemaphore(2)
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
        "img-src 'self' data:; connect-src 'self'; frame-src 'self'; object-src 'none'; "
        "base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
+
+
+class BodyLimit:
+    """Bound JSON buffering before FastAPI parses an untrusted POST body."""
+
+    def __init__(self, app, max_bytes: int = 16384, read_timeout: float = 5.0):
+        self.app, self.max_bytes, self.read_timeout = app, max_bytes, read_timeout
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or scope.get("method") != "POST":
+            return await self.app(scope, receive, send)
+        body = bytearray()
+        try:
+            async with asyncio.timeout(self.read_timeout):
+                while True:
+                    message = await receive()
+                    if message["type"] == "http.disconnect":
+                        return
+                    chunk = message.get("body", b"")
+                    if len(body) + len(chunk) > self.max_bytes:
+                        return await JSONResponse({"detail": "Request body exceeds 16 KiB."}, status_code=413)(scope, receive, send)
+                    body.extend(chunk)
+                    if not message.get("more_body", False):
+                        break
+        except TimeoutError:
+            return await JSONResponse({"detail": "Request body timed out."}, status_code=408)(scope, receive, send)
+        consumed = False
+
+        async def replay():
+            nonlocal consumed
+            if not consumed:
+                consumed = True
+                return {"type": "http.request", "body": bytes(body), "more_body": False}
+            return await receive()
+
+        return await self.app(scope, replay, send)
+
+
+app.add_middleware(BodyLimit)
 
 
 @app.middleware("http")

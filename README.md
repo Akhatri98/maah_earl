@@ -82,7 +82,7 @@ python -m earl run --scenario thin-compression
 ```
 
 The CLI exits 0 for approval, 2 for escalation, and 1 for error, and always
-attempts to write deliverables under `out/`. The current suite has 105 offline
+attempts to write deliverables under `out/`. The current suite has 119 offline
 tests, including the original 50. The [two-minute script](DEMO.md) gives exact
 demo clicks. [RELIABILITY.md](RELIABILITY.md) records benchmark numbers,
 baseline protocol, assumptions, and deployment verification.

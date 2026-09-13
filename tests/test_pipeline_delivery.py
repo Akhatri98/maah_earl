@@ -13,7 +13,7 @@ from unittest.mock import patch
 from earl.analysis import gate, llm
 from earl.analysis.solver import SolveError, model_fingerprint
 from earl.artifacts import skyciv
-from earl.contracts import Decision, Outcome
+from earl.contracts import Decision, DependencyGraph, Outcome
 from earl.delivery import ecn, notify
 from earl.ingestion.source import fixture_inputs, ingest
 from earl.ingestion.truss_map import map_assembly
@@ -96,6 +96,39 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             skyciv.parse_response(raw, fingerprint="different", member_id="m8", pynite_force=10000, provenance="test")
 
+    def test_missing_or_untrusted_pdf_link_cannot_hide_disagreement(self):
+        for report_data in ({}, {"view_link": "javascript:alert(1)"}, {"view_link": None}):
+            raw = {"model_fingerprint": "test", "member_id": "m8", "raw_response": {"functions": [
+                {"function": "S3D.results.fetchMemberResult", "status": 0, "data": [[20, 20]]},
+                {"function": "S3D.results.getAnalysisReport", "status": 0, "data": report_data}]}}
+            report, cross = skyciv.parse_response(raw, fingerprint="test", member_id="m8",
+                                                  pynite_force=10000, provenance="unit-test synthetic response")
+            self.assertFalse(cross.agrees)
+            self.assertTrue(cross.performed)
+            self.assertIsNone(report.url)
+            with tempfile.TemporaryDirectory() as directory:
+                skyciv._write_reference(Path(directory), report, cross)
+                self.assertNotIn("javascript:", (Path(directory) / "report.html").read_text())
+
+    def test_report_function_and_disk_failure_cannot_erase_a_numerical_disagreement(self):
+        from earl.eval.harness import CACHE
+        truth = json.loads((CACHE / "truth" / "reinforce-chord.json").read_text())
+        graph = DependencyGraph.from_dict(truth["after_graph"])
+        decision = Decision.from_dict(truth["earl_decision"])
+        self.assertIs(decision.outcome, Outcome.APPROVED)
+        keys = {"DEMO_MODE": "false", "SKYCIV_API_USERNAME": "unit-test-only", "SKYCIV_API_KEY": "unit-test-only"}
+        response = {"functions": [
+            {"function": "S3D.model.solve", "status": 0, "data": None},
+            {"function": "S3D.results.fetchMemberResult", "status": 0, "data": [[0, 0]]},
+            {"function": "S3D.results.getAnalysisReport", "status": 1, "data": None}]}
+        with tempfile.TemporaryDirectory() as directory, patch.object(skyciv, "PROJECT_ROOT", Path(directory)), patch.dict(os.environ, keys), patch("requests.post") as post, patch.object(skyciv, "_write_reference", side_effect=OSError("disk unavailable")):
+            post.return_value.json.return_value = response
+            report, cross = skyciv.create_report(graph, decision, Path(directory) / "run", allow_live=True)
+            final = gate.attach_cross_check(decision, report, cross)
+        self.assertIs(final.outcome, Outcome.ESCALATED)
+        self.assertFalse(final.cross_check.agrees)
+        self.assertIn("write failed", final.skyciv_report.note)
+
     def test_ecn_uses_decision_only_escapes_html_and_email_is_parseable(self):
         decision = gate.error_decision(decision_id="a" * 32, graph_id="unbuilt", change_id="edit",
                                        description='<script>alert("bad")</script>\nInjected: value', message="unavailable")
@@ -107,6 +140,7 @@ class ArtifactTests(unittest.TestCase):
             message = BytesParser(policy=policy.default).parsebytes(Path(receipt.email_path).read_bytes())
             self.assertEqual(message["To"], "responsible.engineer@example.com")
             self.assertEqual(message.get_content_type(), "multipart/alternative")
+            self.assertIsNotNone(message["Date"])
             self.assertIn("ERROR", str(message["Subject"]))
             self.assertNotIn("Injected", list(message.keys()))
 
@@ -127,6 +161,31 @@ class ArtifactTests(unittest.TestCase):
             post.assert_not_called()
             self.assertEqual(receipt.status, "would be sent to")
 
+    def test_gmail_failure_keeps_the_real_local_email(self):
+        keys = {key: "unit-test-only" for key in ("GMAIL_REFRESH_TOKEN", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET")}
+        keys.update(DEMO_MODE="false", GMAIL_NOTIFY_RECIPIENT="engineer@company.test", GMAIL_SENDER_ADDRESS="earl@company.test")
+        decision = gate.error_decision(decision_id="d" * 32, graph_id="g", change_id="c", description="edit", message="test error")
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, keys), patch("requests.post", side_effect=ConnectionError("offline")) as post:
+            receipt = notify.deliver(decision, Path(directory), allow_live=True)
+            self.assertEqual(post.call_count, 1)
+            self.assertEqual(receipt.status, "would be sent to")
+            self.assertIn("could not be confirmed", receipt.note)
+            self.assertTrue(Path(receipt.email_path).is_file())
+
+    def test_skyciv_network_failure_uses_explicit_different_model_fixture(self):
+        from earl.eval.harness import CACHE
+        truth = json.loads((CACHE / "truth" / "thin-compression.json").read_text())
+        graph = DependencyGraph.from_dict(truth["after_graph"])
+        decision = Decision.from_dict(truth["earl_decision"])
+        keys = {"DEMO_MODE": "false", "SKYCIV_API_USERNAME": "unit-test-only", "SKYCIV_API_KEY": "unit-test-only"}
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, keys), patch("requests.post", side_effect=ConnectionError("offline")) as post:
+            report, cross = skyciv.create_report(graph, decision, Path(directory), allow_live=True)
+            self.assertEqual(post.call_count, 1)
+            self.assertFalse(cross.performed)
+            self.assertIsNone(cross.agrees)
+            self.assertIn("different model", report.provenance)
+            self.assertTrue((Path(directory) / "report.html").is_file())
+
 
 class LanguageTests(unittest.TestCase):
     def test_rule_parser_produces_typed_changes_and_no_safety_prompt(self):
@@ -140,6 +199,61 @@ class LanguageTests(unittest.TestCase):
         self.assertEqual(llm.interpret_change("remove m8", graph).change.numeric_after, 0)
         self.assertEqual(llm.interpret_change("add 80 kN at n1", graph).change.node_after, "n1")
         self.assertEqual(llm.interpret_change("move p1 to n3", graph).change.node_after, "n3")
+
+    def test_safety_questions_never_reach_the_optional_provider(self):
+        graph = fixture_graph()
+        with patch("earl.analysis.llm._provider") as provider:
+            for question in ("is this safe?", "is m8 unsafe?", "will m8 fail?", "is this compliant?"):
+                with self.assertRaises(ValueError):
+                    llm.interpret_change(question, graph, allow_live=True)
+            provider.assert_not_called()
+
+    def test_narrative_job_does_not_forward_a_safety_question_either(self):
+        decision = gate.error_decision(decision_id="f" * 32, graph_id="g", change_id="c",
+                                       description="Is this safe?", message="test error")
+        with patch("earl.analysis.llm._provider") as provider:
+            _, provenance = llm.draft_narrative(decision, allow_live=True)
+        provider.assert_not_called()
+        self.assertEqual(provenance, "recorded deterministic template")
+
+    def test_malformed_load_case_selection_falls_back(self):
+        graph = fixture_graph()
+        for invalid in ([], {}, 1, None, "unknown"):
+            with patch("earl.analysis.llm._provider", return_value={"load_case_id": invalid}):
+                case, provenance = llm.select_load_case(graph, "resize a member", allow_live=True)
+            self.assertEqual(case, "lc_1")
+            self.assertEqual(provenance, "deterministic case selection")
+
+    def test_provider_prose_cannot_introduce_a_safety_claim_or_replace_the_edit(self):
+        decision = gate.error_decision(decision_id="c" * 32, graph_id="g", change_id="c",
+                                       description="Resize m8 from 20 to 8 in^2.", message="test error")
+        for claim in ("The structure is sound.", "This change passes the requirements.", "It is acceptable.", ""):
+            with patch("earl.analysis.llm._provider", return_value={"narrative": claim}):
+                narrative, provenance = llm.draft_narrative(decision, allow_live=True)
+            self.assertEqual(provenance, "recorded deterministic template")
+            self.assertIn(decision.change_description, narrative)
+        with patch("earl.analysis.llm._provider", return_value={"narrative": "The requested edit resizes member m8 from 20 to 8 in^2."}):
+            decision.narrative, decision.narrative_provenance = llm.draft_narrative(decision, allow_live=True)
+        self.assertTrue(decision.narrative_provenance.startswith("provider"))
+        self.assertIn(decision.change_description, ecn.text(decision))
+        self.assertIn("Non-authoritative change summary", ecn.text(decision))
+        self.assertIs(decision.outcome, Outcome.ERROR)
+
+    def test_live_provider_network_error_falls_back_for_every_job(self):
+        graph = fixture_graph()
+        keys = {"DEMO_MODE": "false", "META_MUSE_KEY": "unit-test-key",
+                "META_MUSE_URL": "https://provider.invalid/chat", "META_MUSE_MODEL": "test-model"}
+        decision = gate.error_decision(decision_id="c" * 32, graph_id="g", change_id="c",
+                                       description="Resize m8 from 20 to 8 in^2.", message="test error")
+        with tempfile.TemporaryDirectory() as directory, patch.object(llm, "PROJECT_ROOT", Path(directory)), patch.dict(os.environ, keys), patch("requests.post", side_effect=ConnectionError("offline")) as post:
+            parsed = llm.interpret_change("resize m8 to 8 in2", graph, allow_live=True)
+            case, provenance = llm.select_load_case(graph, "resize a member", allow_live=True)
+            narrative, source = llm.draft_narrative(decision, allow_live=True)
+        self.assertEqual(post.call_count, 3)
+        self.assertEqual(parsed.provenance, "rule-based parser")
+        self.assertEqual(case, "lc_1")
+        self.assertEqual(provenance, "deterministic case selection")
+        self.assertEqual(source, "recorded deterministic template")
 
     def test_judge_parameters_clamp_and_reject_nonfinite(self):
         from earl.scenarios import make_change

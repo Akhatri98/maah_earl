@@ -30,6 +30,22 @@ TEMPLATES = PROJECT_ROOT / "tests" / "fixtures" / "llm" / "templates.json"
 # or application clients are ever passed to a language model.
 ORCHESTRATION_CAPABILITIES = frozenset({"interpret_change", "select_load_case", "draft_narrative"})
 PROVIDER_TOOLS: tuple = ()
+SAFETY_REQUEST_PATTERN = r"\b(safe|unsafe|safety|approv\w*|adequate|compliant|compliance|passes?|fails?|stable|stability|merge|send|email)\b"
+NEUTRAL_PROSE_WORDS = frozenset({
+    "a", "an", "the", "this", "requested", "request", "engineering", "edit", "change", "changes",
+    "member", "section", "cross", "sectional", "area", "load", "point", "magnitude", "node",
+    "resize", "resizes", "resized", "remove", "removes", "removed", "add", "adds", "added",
+    "move", "moves", "moved", "set", "sets", "from", "to", "at", "of", "in", "is", "was",
+    "by", "and", "with", "square", "inches", "millimeters", "meters", "downward",
+})
+
+
+def _neutral_prose(text: str, description: str) -> bool:
+    """Closed vocabulary: prose may rearrange edit facts, not add findings."""
+    words = set(re.findall(r"[a-z0-9]+", text.lower()))
+    source_words = set(re.findall(r"[a-z0-9]+", description.lower()))
+    forbidden = r"\b(safe|unsafe|safety|approv\w*|escalat\w*|adequate|compliant|passes?|fails?|merge|send)\b"
+    return bool(text.strip()) and len(text) <= 500 and words <= (source_words | NEUTRAL_PROSE_WORDS) and not re.search(forbidden, text, re.I)
 
 
 @dataclass(frozen=True)
@@ -134,7 +150,7 @@ def interpret_change(description: str, graph: DependencyGraph, *, allow_live: bo
     if not isinstance(description, str) or not description.strip() or len(description) > 2000:
         raise ValueError("change text must contain 1 to 2000 characters")
     # Safety questions are never sent to a provider. They are not typed edits.
-    if re.search(r"\b(safe|safety|approve|approved|merge|send|email)\b", description, re.I):
+    if re.search(SAFETY_REQUEST_PATTERN, description, re.I):
         scenario, params = _rule_spec(description, graph)
         change = _from_spec(graph, scenario, params)
         change.apply(graph)
@@ -170,9 +186,12 @@ def select_load_case(graph: DependencyGraph, description: str, *, allow_live: bo
     choices = {case.id for case in graph.load_cases}
     if graph.change.target_kind and graph.change.target_kind.value == "load" and preferred in choices:
         return preferred, "typed load delta"
-    answer = _provider("select_load_case", {"cases": [{"id": c.id, "name": c.name} for c in graph.load_cases]},
+    delta = graph.change.to_dict()
+    context = {key: delta[key] for key in ("target_id", "target_kind", "field_name", "numeric_before", "numeric_after")}
+    answer = _provider("select_load_case", {"change": context, "cases": [c.to_dict() for c in graph.load_cases]},
                        "Select one available load case. Return JSON {load_case_id}. No other fields.", allow_live=allow_live)
-    if answer and set(answer) == {"load_case_id"} and answer["load_case_id"] in choices:
+    if (answer and set(answer) == {"load_case_id"} and
+            isinstance(answer["load_case_id"], str) and answer["load_case_id"] in choices):
         return answer["load_case_id"], "provider or recorded selection"
     return preferred if preferred in choices else graph.load_cases[0].id, "deterministic case selection"
 
@@ -181,13 +200,15 @@ def draft_narrative(decision: Decision, *, allow_live: bool = False) -> tuple[st
     decision.validate()
     # The model may restate only the edit. Verdict/evidence paragraphs are
     # templated from Decision by delivery and cannot be replaced with this text.
-    answer = _provider("draft_narrative", {"change_description": decision.change_description},
+    answer = None
+    if not re.search(SAFETY_REQUEST_PATTERN, decision.change_description, re.I):
+        answer = _provider("draft_narrative", {"change_description": decision.change_description},
                        "Write one neutral sentence describing this requested engineering edit. "
                        "Return JSON {narrative}. Do not make recommendations or evaluate the structure.",
                        allow_live=allow_live)
     if answer and set(answer) == {"narrative"} and isinstance(answer["narrative"], str):
         text = answer["narrative"].strip()
-        if len(text) <= 500 and not re.search(r"\b(safe|unsafe|approv\w*|escalat\w*|adequate|compliant|merge|send)\b", text, re.I):
+        if _neutral_prose(text, decision.change_description):
             return text, "provider or recorded prose; non-authoritative"
     template = json.loads(TEMPLATES.read_text())["narrative"]
     return template.format(change=decision.change_description), "recorded deterministic template"

@@ -77,6 +77,12 @@ class GateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             evaluate(self.before_graph, graph, self.before, self.before)
 
+    def test_stale_capacity_cannot_approve_a_changed_model(self):
+        graph, solved = self.after()
+        stale = capacities(self.before_graph, self.before.axial_forces)
+        with self.assertRaisesRegex(ValueError, "capacity"):
+            evaluate(self.before_graph, graph, self.before, solved, after_capacities=stale)
+
     def test_solver_failure_only_produces_error(self):
         decision = error_decision(decision_id="e", graph_id="g", change_id="c",
                                   description="Remove a member", message="Solver timed out")

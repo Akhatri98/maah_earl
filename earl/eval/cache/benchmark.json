@@ -26,6 +26,7 @@
     ]
   },
   "passed": true,
+  "published_reference_sha256": "8e877b3b4436779d954759df77b2a690634f5c7978891734defa861898be7c39",
   "relative_tolerance": 1e-06,
   "sanity_checks": {
     "equilibrium_ok": true,

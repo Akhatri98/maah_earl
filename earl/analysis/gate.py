@@ -54,6 +54,18 @@ def _policy(decision: Decision) -> None:
     decision.outcome = Outcome.ESCALATED if reason else Outcome.APPROVED
 
 
+def _checked_capacities(graph: DependencyGraph, solved: SolveResult,
+                        supplied: dict[str, CapacityResult] | None) -> dict[str, CapacityResult]:
+    expected = capacities(graph, solved.axial_forces)
+    if supplied is None:
+        return expected
+    # A matching solver fingerprint alone does not bind a separate capacity cache.
+    for mid, result in supplied.items():
+        if mid not in expected or result != expected[mid]:
+            raise ValueError(f"capacity for {mid} does not match the current model and demand")
+    return supplied
+
+
 def evaluate(
     before_graph: DependencyGraph, after_graph: DependencyGraph,
     before: SolveResult, after: SolveResult, *, decision_id: str = "decision",
@@ -83,8 +95,8 @@ def evaluate(
         decision.validate()
         return decision
 
-    before_caps = before_capacities if before_capacities is not None else capacities(before_graph, before.axial_forces)
-    after_caps = after_capacities if after_capacities is not None else capacities(after_graph, after.axial_forces)
+    before_caps = _checked_capacities(before_graph, before, before_capacities)
+    after_caps = _checked_capacities(after_graph, after, after_capacities)
     decision = Decision(
         id=decision_id, graph_id=after_graph.id, change_id=after_graph.change.id,
         outcome=Outcome.ERROR, change_description=after_graph.change.description,

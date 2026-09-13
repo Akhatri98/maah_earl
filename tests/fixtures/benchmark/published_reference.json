@@ -1,0 +1,53 @@
+{
+  "area_in2": 10.0,
+  "displacement_capture": "Observed the published np.linalg.solve return value; matrices and loads unchanged.",
+  "displacements_in": {
+    "n1": [
+      0.8477626292075081,
+      -3.7951263093030496
+    ],
+    "n2": [
+      -0.9522373707924923,
+      -3.9395749854228357
+    ],
+    "n3": [
+      0.7033139530877217,
+      -1.6743524503048743
+    ],
+    "n4": [
+      -0.7366860469122786,
+      -1.802115079512382
+    ],
+    "n5": [
+      0.0,
+      0.0
+    ],
+    "n6": [
+      0.0,
+      0.0
+    ]
+  },
+  "downward_load_each_lbf": 100000.0,
+  "elastic_modulus_psi": 10000000.0,
+  "max_displacement_difference_in": 4.440892098500626e-15,
+  "max_stress_difference_psi": 3.456079866737127e-11,
+  "note": "Numbers from executing published runnable code, not a transcribed textbook results table.",
+  "passed": true,
+  "solver_version": "2.4.1",
+  "source_commit": "df0c0f1bcc8baea1ede63442fa3f32fa4f275e71",
+  "source_modified": false,
+  "source_sha256": "8e877b3b4436779d954759df77b2a690634f5c7978891734defa861898be7c39",
+  "source_url": "https://raw.githubusercontent.com/mdobook/resources/df0c0f1bcc8baea1ede63442fa3f32fa4f275e71/exercises/tenbartruss/truss.py",
+  "stress_psi": {
+    "m1": 19536.498696881157,
+    "m10": -5674.479912095563,
+    "m2": 4012.463225549621,
+    "m3": -20463.50130311885,
+    "m4": -5987.536774450379,
+    "m5": 3548.96192243077,
+    "m6": 4012.4632255496203,
+    "m7": 14797.625452779206,
+    "m8": -13486.64579468267,
+    "m9": 8467.655711635372
+  }
+}

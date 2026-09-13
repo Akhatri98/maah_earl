@@ -82,15 +82,20 @@ experimental claim.
   of `Fy*A` and `pi^2*E*Imin/(K*L)^2`; tension capacity is `Fy*A` because Euler
   buckling does not apply to tension. Slenderness is `K*L/sqrt(Imin/A)`.
 - This is linear elastic, axial-only, small-displacement 2D truss analysis,
-  with simplified point loads. No plasticity, imperfections, joint strength,
+  with simplified point loads and no self-weight. No plasticity, imperfections,
+  joint strength,
   local buckling, fatigue, dynamics, code load combinations, or AISC/ASCE
   compliance is claimed. Euler/yield minima do not implement an inelastic
   column curve or a building-code design check.
+  One selected available load case is checked, not a code-combination envelope.
 - The original synthetic parser fixture has only two named bars, a gusset,
   and a spare. A separate full ten-member fixture is explicitly synthetic.
   The demo starts with 20 in^2 solid round sections and two 20 kN downward
   loads, so ordinary controls can exercise both approval and escalation.
   These are demonstrator parameters, distinct from benchmark validation.
+- The supplied snapshot is the before-model. Each run applies one proposed
+  typed delta to that snapshot; edits do not accumulate between demo runs.
+  There is no live Onshape webhook listener or historical-state reconstruction.
 - The evaluated SI Onshape variable table supplies dimensions and section
   area; `safetyFactor` is a design target. `hard_floor` is at least 1.0 and
   cannot be weakened by a payload or environment setting. The legacy
@@ -102,6 +107,8 @@ experimental claim.
 - `.eml` is a real saved deliverable, not proof of email delivery. Public
   demo mode cannot send Gmail or make live CAD/LLM/SkyCiv requests. No CAD
   branch creation, merge, or write implementation is part of this project.
+  `responsible.engineer@example.com` is an explicit placeholder, not a resolved
+  CAD owner. A trusted operator can configure the actual recipient.
 
 ## Solver Validation
 
@@ -112,13 +119,24 @@ values deliberately differ from the original rounded contract specimen.
 
 The definition is the standard Haftka/Gurdal/Rajan ten-bar family, also
 published with runnable reference code in [Martins and Ning, Appendix D.2.2](https://mdobook.github.io/html/appendix-functions/)
-and its [reference implementation](https://raw.githubusercontent.com/mdobook/resources/main/exercises/tenbartruss/truss.py).
+and its [reference implementation](https://raw.githubusercontent.com/mdobook/resources/df0c0f1bcc8baea1ede63442fa3f32fa4f275e71/exercises/tenbartruss/truss.py).
 The uniform 10 in^2 initial design is also specified in [Chen et al. (2015)](https://onlinelibrary.wiley.com/doi/10.1155/2015/521482).
 The frozen values below reproduce that published formulation with an
 independent direct-stiffness calculation (`scripts/benchmark_reference.py`),
 without PyNite. They are **not claimed to be a transcribed numerical table
 from Haftka's book**. A textbook formulation and a same-family benchmark are
 not evidence of code compliance or universal solver correctness.
+
+The book authors' **unmodified published code was also executed directly** at
+commit `df0c0f1bcc8baea1ede63442fa3f32fa4f275e71`. Its stresses and the
+displacements returned by its linear solve were recorded in
+`tests/fixtures/benchmark/published_reference.json`. Against PyNite, maximum
+absolute differences were `3.45608e-11 psi` and `4.44089e-15 in`. The source
+SHA-256 is `8e877b3b4436779d954759df77b2a690634f5c7978891734defa861898be7c39`.
+`scripts/published_reference_selfcheck.py` accepts that checksum-pinned source
+as a local input and reproduces the comparison without changing its matrices
+or loads. The recorded numbers are from executable published code, not a
+textbook results table. Normal runtime validation needs only committed JSON.
 
 | Member | Reference Stress (psi, Tension Positive) | PyNite (psi) |
 |---|---:|---:|
@@ -142,7 +160,8 @@ not evidence of code compliance or universal solver correctness.
 | n5, n6 | 0 | 0 | 0, 0 |
 
 The runtime asserts all ten stresses and all twelve translational values
-against committed JSON on first worker use. Relative tolerance is `1e-6`,
+against both committed reference datasets on first worker use. Relative
+tolerance is `1e-6`,
 with absolute tolerances `1e-5 psi` and `1e-8 in`. The separate test compares
 the independent calculation to PyNite to six decimal places in psi and nine
 inches decimal places. The production engine is pinned `PyNiteFEA 2.4.1`.
@@ -197,14 +216,14 @@ reads this cache and checks the catalogue hash; it never invokes a model.
 
 ## Verification Status
 
-The end-to-end pipeline checkpoint passes 105 offline tests, including the
+The end-to-end pipeline checkpoint passes 119 offline tests, including the
 original 50. With networking disabled, `thin-compression` resizes m8 from
 20 to 8 in^2, produces SF `0.478`, escalates, and writes an ECN, MIME email,
 Decision JSON, report reference, and nine-stage JSONL trace. `reinforce-chord`
 approves. A mocked solver crash produces a held `ERROR` with a saved email.
 
 Tests cover hard-floor rejection on produce and consume, solver benchmark,
-both sanity checks, buckling, stale model fingerprints, unmapped instances,
+both sanity checks, buckling, stale model and capacity results, unmapped instances,
 typed edit application, incomplete and disputed escalation, capability denial,
 network fallbacks, public-input clamps, and tampered SSE/trace rejection.
 Headless Chromium application checks exercise all six panels, comparison,
@@ -212,6 +231,11 @@ hover, sorting, removal, parser preview, artifacts, and five viewports:
 1440x900, 1366x768, 820x1180, 390x844, and 320x700. They found no page overflow,
 overlapping controls, JavaScript exceptions, or third-party requests. The member
 table intentionally scrolls horizontally on narrow phones.
+
+The gate independently checks any supplied capacity cache against the current
+graph and solved forces. A stale capacity cannot reuse an older passing safety
+factor for a changed model. Missing capacity remains `NOT_EVALUATED`; a
+contradictory supplied value is an analysis-integrity error, not an approval.
 
 `scripts/browser_selfcheck.py` writes screenshots and measurements under
 `out/qa/`. It uses an isolated browser profile, not a user's session. Native
@@ -236,7 +260,20 @@ remaining live-integration limitation, not a fabricated successful check.
 An optional live adapter submits the exact model, retrieves a report reference
 and governing axial demand magnitude, records the raw response, and reuses it
 only for an exact model/member fingerprint. Disagreement is returned to Biject
-and forces escalation. Report download failure cannot discard a disagreement.
+and forces escalation. A failed PDF/report function, rejected report URL, or
+local report/recording write failure cannot discard a completed numerical
+disagreement. The `S3D-*` reference is a local content-derived label, not a
+claimed SkyCiv job identifier. Failure of the optional independent service
+means the cross-check is unavailable; failure of the primary PyNite analysis
+means `ERROR`. Neither is fabricated into a safety finding.
+
+The optional language client requires an explicit `META_MUSE_URL` and
+`META_MUSE_MODEL` in addition to `META_MUSE_KEY`; an unspecified provider is
+not guessed. All three jobs fall back when unavailable or malformed. Prose
+uses a closed neutral vocabulary from the typed edit, cannot add a safety
+claim, and cannot replace the canonical change description in the ECN.
+The baseline selector receives geometry, sections, material properties, loads,
+units, and thresholds, but no solved results or EARL affected-member hints.
 
 Public requests always disable live calls independently of environment flags.
 Trusted CLI calls additionally need `--live`, `DEMO_MODE=false`, and the
@@ -246,7 +283,7 @@ file handles, Onshape client, or delivery callable. The capability test checks
 the strict three-operation surface and absence of action tools. The gate
 enforces the EARL acceptance state, not a real Onshape branch permission.
 
-Semantic outputs (model, forces, comparisons) are deterministic. Run IDs,
+Offline semantic outputs (model, forces, comparisons) are deterministic. Run IDs,
 audit timestamps, and measured durations intentionally vary between runs.
 
 ## Public Deployment
@@ -286,6 +323,8 @@ Public mode is always offline, even if an operator sets `DEMO_MODE=false`.
 Judge areas are clamped to 0.5-40 in^2 and loads to 0-150 kN. Member IDs and
 free load nodes are allowlisted; unsupported parameters are rejected. Two
 simultaneous runs are allowed, with a 12-second killable timeout per solve.
+POST bodies are limited to 16 KiB and five seconds of receive time before JSON
+parsing; change text itself is limited to 2,000 characters.
 No public request can choose arbitrary geometry, files, URLs, or API tools.
 Every completed stage is appended to the local JSONL trace. If a browser
 disconnects mid-run, its stream may end before delivery; the UI reports ERROR
