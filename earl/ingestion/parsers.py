@@ -398,3 +398,195 @@ def _as_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+# --------------------------------------------------------------------------
+# Mate connectors -> truss topology
+# --------------------------------------------------------------------------
+
+# Our FeatureScript names every connector "<featureid>.m<k>_n<j>", so the id
+# carries both the member and the node it sits on. That is OUR convention, not
+# something Onshape guarantees, so derive_topology() treats a parsed name as
+# the fast path and falls back to clustering by coordinate when it does not
+# match -- never guessing, and never silently returning a partial topology.
+_CONNECTOR_NAME = re.compile(r"\.(?P<member>m\d+)_(?P<node>n\d+)$")
+
+# Two connectors within this distance (metres) are the same truss node.
+# Loose enough for float noise, far tighter than any real member length.
+NODE_TOLERANCE = 1e-6
+
+
+@dataclass(frozen=True)
+class MateConnector:
+    """One mate connector on a part, with the node position it marks.
+
+    The nine mates only consume 13 of the truss's 20 connectors, so reading
+    connectors from the mates alone loses seven endpoints. These come from the
+    top-level `parts` list instead, which carries all of them -- which needs
+    includeMateConnectors=true on the assembly definition request.
+    """
+
+    part_id: str
+    feature_id: str
+    origin: tuple[float, float, float]
+    member_name: str = ""    # "m5", when the id follows our naming convention
+    node_name: str = ""      # "n3", likewise
+
+    @property
+    def is_named(self) -> bool:
+        return bool(self.member_name and self.node_name)
+
+
+def parse_mate_connectors(assembly: dict[str, Any]) -> list[MateConnector]:
+    """Parse the top-level parts[].mateConnectors of an assembly definition.
+
+    Returns an empty list when the request was made without
+    includeMateConnectors=true -- the key is simply absent then, which is
+    indistinguishable from a document with no connectors. Callers should check
+    the count rather than assume the read succeeded.
+    """
+    out: list[MateConnector] = []
+    for part in (assembly or {}).get("parts") or []:
+        for mc in part.get("mateConnectors") or []:
+            cs = mc.get("mateConnectorCS") or {}
+            origin = cs.get("origin")
+            if not origin or len(origin) != 3:
+                continue
+            feature_id = mc.get("featureId", "") or ""
+            match = _CONNECTOR_NAME.search(feature_id)
+            out.append(
+                MateConnector(
+                    part_id=part.get("partId", "") or "",
+                    feature_id=feature_id,
+                    origin=tuple(float(v) for v in origin),
+                    member_name=match.group("member") if match else "",
+                    node_name=match.group("node") if match else "",
+                )
+            )
+    return out
+
+
+@dataclass
+class TrussTopology:
+    """Truss connectivity recovered from CAD: where the nodes are, and which
+    two nodes each member spans.
+
+    `unresolved` records anything that could not be placed. It exists so an
+    incomplete read fails loudly at the boundary instead of producing a graph
+    quietly missing a member -- a dropped domino by construction.
+    """
+
+    node_positions: dict[str, tuple[float, float, float]] = field(default_factory=dict)
+    member_ends: dict[str, tuple[str, str]] = field(default_factory=dict)
+    member_part_ids: dict[str, str] = field(default_factory=dict)
+    unresolved: list[str] = field(default_factory=list)
+
+    @property
+    def is_complete(self) -> bool:
+        return not self.unresolved and bool(self.member_ends)
+
+    def validate(self) -> None:
+        if self.unresolved:
+            raise ValueError(
+                "truss topology is incomplete: " + "; ".join(self.unresolved)
+            )
+        for mid, ends in self.member_ends.items():
+            for nid in ends:
+                if nid not in self.node_positions:
+                    raise ValueError(
+                        f"member {mid!r} references unplaced node {nid!r}"
+                    )
+
+
+def derive_topology(
+    connectors: Iterable[MateConnector],
+    *,
+    tolerance: float = NODE_TOLERANCE,
+) -> TrussTopology:
+    """Recover nodes and member endpoints from mate connectors.
+
+    Node identity always comes from POSITION, not from the connector name:
+    two connectors at the same point are the same structural node whatever
+    they happen to be called. Names only supply the readable ids ("n3" rather
+    than "node_2") and the member each connector belongs to.
+
+    A member with anything other than two distinct endpoints is recorded in
+    `unresolved` rather than dropped, because a member silently missing from
+    the graph is exactly the failure this project exists to catch.
+    """
+    connectors = list(connectors)
+    topology = TrussTopology()
+
+    if not connectors:
+        topology.unresolved.append(
+            "no mate connectors found -- was the assembly definition requested "
+            "with includeMateConnectors=true?"
+        )
+        return topology
+
+    # -- cluster connector positions into nodes ----------------------------
+    clusters: list[tuple[float, float, float]] = []
+
+    def cluster_index(origin: tuple[float, float, float]) -> int:
+        for i, c in enumerate(clusters):
+            if all(abs(a - b) <= tolerance for a, b in zip(origin, c)):
+                return i
+        clusters.append(origin)
+        return len(clusters) - 1
+
+    cluster_of = [cluster_index(c.origin) for c in connectors]
+
+    # Name each cluster from the connector names that landed in it. A cluster
+    # carrying two different names means the naming contradicts the geometry:
+    # a modelling error worth surfacing, not smoothing over.
+    cluster_names: dict[int, set[str]] = defaultdict(set)
+    for conn, idx in zip(connectors, cluster_of):
+        if conn.node_name:
+            cluster_names[idx].add(conn.node_name)
+
+    node_ids: dict[int, str] = {}
+    for idx in range(len(clusters)):
+        names = cluster_names.get(idx, set())
+        if len(names) == 1:
+            node_ids[idx] = next(iter(names))
+        elif len(names) > 1:
+            node_ids[idx] = sorted(names)[0]
+            topology.unresolved.append(
+                f"connectors at {clusters[idx]} carry conflicting node names "
+                f"{sorted(names)}; the geometry says they are one node"
+            )
+        else:
+            node_ids[idx] = f"node_{idx + 1}"
+
+    # A name must not appear at two different positions either.
+    seen_names: dict[str, int] = {}
+    for idx in range(len(clusters)):
+        nid = node_ids[idx]
+        if nid in seen_names:
+            topology.unresolved.append(
+                f"node name {nid!r} appears at two positions: "
+                f"{clusters[seen_names[nid]]} and {clusters[idx]}"
+            )
+        seen_names[nid] = idx
+
+    topology.node_positions = {node_ids[i]: clusters[i] for i in range(len(clusters))}
+
+    # -- group connectors into members -------------------------------------
+    by_member: dict[str, list[str]] = defaultdict(list)
+    for conn, idx in zip(connectors, cluster_of):
+        member_id = conn.member_name or f"part_{conn.part_id}"
+        by_member[member_id].append(node_ids[idx])
+        if conn.part_id:
+            topology.member_part_ids[member_id] = conn.part_id
+
+    for member_id, ends in sorted(by_member.items()):
+        distinct = sorted(set(ends))
+        if len(ends) == 2 and len(distinct) == 2:
+            topology.member_ends[member_id] = (ends[0], ends[1])
+        else:
+            topology.unresolved.append(
+                f"member {member_id!r} has {len(ends)} connector(s) at "
+                f"{len(distinct)} distinct node(s) {distinct}; expected 2 and 2"
+            )
+
+    return topology

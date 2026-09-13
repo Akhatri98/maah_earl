@@ -68,11 +68,19 @@ class OnshapeClient:
 
     # -- transport ---------------------------------------------------------
 
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        params: dict[str, Any] | None = None,
+        body: dict[str, Any] | None = None,
+    ) -> Any:
         url = f"{self.config.base_url}{path}"
-        resp = requests.get(
+        resp = requests.request(
+            method,
             url,
             params=params,
+            json=body,
             auth=(self.config.access_key, self.config.secret_key),
             headers={"Accept": ACCEPT, "Content-Type": "application/json"},
             timeout=self.timeout,
@@ -88,16 +96,32 @@ class OnshapeClient:
             )
 
         self.log.append(
-            RequestRecord("GET", path, resp.status_code, len(resp.content))
+            RequestRecord(method, path, resp.status_code, len(resp.content))
         )
 
-        if resp.status_code != 200:
+        # Onshape answers writes with 200 or 201; DELETE can answer 204.
+        if resp.status_code not in (200, 201, 204):
             raise OnshapeError(resp.status_code, resp.text[:500], url)
+
+        if resp.status_code == 204 or not resp.content:
+            return None
 
         data = resp.json()
         if self.record_dir:
             self._record(path, data)
         return data
+
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        return self._request("GET", path, params=params)
+
+    def _post(self, path: str, body: dict[str, Any] | None = None) -> Any:
+        """A write. Onshape writes are NOT free to undo -- a version, once
+        created, cannot be deleted -- so callers should make the intent
+        explicit rather than treating this like a read."""
+        return self._request("POST", path, body=body)
+
+    def _delete(self, path: str) -> Any:
+        return self._request("DELETE", path)
 
     def _record(self, path: str, data: Any) -> None:
         self.record_dir.mkdir(parents=True, exist_ok=True)
@@ -138,16 +162,29 @@ class OnshapeClient:
         return self._get(f"/api/variables/{self._dw()}/e/{element_id}/variables")
 
     def get_assembly_definition(
-        self, element_id: str, *, include_mate_features: bool = True
+        self,
+        element_id: str,
+        *,
+        include_mate_features: bool = True,
+        include_mate_connectors: bool = True,
     ) -> dict[str, Any]:
-        """Assembly instances, occurrences and (optionally) mate features.
+        """Assembly instances, occurrences and (optionally) mate features and
+        mate connectors.
 
         `includeMateFeatures` folds the mate data into this single response,
         which is why it is preferred over a separate /features call.
+
+        `includeMateConnectors` matters more than it looks. Mates only mention
+        the connectors they actually consume: the truss is fully constrained by
+        nine mates, which touch 13 of the 20 connectors the FeatureScript
+        created. The other seven are real node positions that no mate names, so
+        without this flag seven members have an endpoint with no coordinate and
+        the topology cannot be recovered. Defaults to true for that reason --
+        an incomplete graph is the dropped domino this project exists to catch.
         """
         params = {
             "includeMateFeatures": str(include_mate_features).lower(),
-            "includeMateConnectors": "false",
+            "includeMateConnectors": str(include_mate_connectors).lower(),
             "includeNonSolids": "false",
         }
         return self._get(f"/api/assemblies/{self._dw()}/e/{element_id}", params)
@@ -164,3 +201,96 @@ class OnshapeClient:
     def get_parts(self, element_id: str) -> list[dict[str, Any]]:
         """Parts in a part studio, for provenance ids on members."""
         return self._get(f"/api/parts/{self._dw()}/e/{element_id}")
+
+    # -- branch management (Sprint 2A) -------------------------------------
+    #
+    # plan.md evaluates every change in a BRANCH, never the main workspace:
+    # "a free, resettable sandbox, so nothing is committed until it's
+    # verified". Onshape has no single "branch" object -- a branch is a
+    # workspace parented to a version, so creating one is two steps:
+    #
+    #   1. POST a version   -- an immutable snapshot of the source workspace
+    #   2. POST a workspace -- the editable branch, rooted at that version
+    #
+    # The asymmetry matters: a WORKSPACE can be deleted (so "reset" is cheap
+    # and total), but a VERSION cannot. Every evaluation therefore leaves a
+    # permanent version behind in the document's history. That is the real
+    # cost of the sandbox, and it is worth knowing before running twenty eval
+    # scenarios against a live document.
+
+    def list_versions(self) -> list[dict[str, Any]]:
+        return self._get(f"/api/documents/d/{self.config.document_id}/versions")
+
+    def list_workspaces(self) -> list[dict[str, Any]]:
+        """Every workspace (branch) in the document, including Main."""
+        return self._get(f"/api/documents/d/{self.config.document_id}/workspaces")
+
+    def find_workspace(self, name: str) -> dict[str, Any] | None:
+        for ws in self.list_workspaces():
+            if ws.get("name") == name:
+                return ws
+        return None
+
+    def create_version(
+        self, name: str, *, workspace_id: str | None = None
+    ) -> dict[str, Any]:
+        """Snapshot a workspace as an immutable version.
+
+        PERMANENT: Onshape provides no way to delete a version. Each one is a
+        line in the document's history forever.
+        """
+        return self._post(
+            f"/api/documents/{self.config.document_id}/versions",
+            {
+                "documentId": self.config.document_id,
+                "workspaceId": workspace_id or self.config.workspace_id,
+                "name": name,
+            },
+        )
+
+    def create_workspace(self, name: str, *, version_id: str) -> dict[str, Any]:
+        """Create a branch workspace rooted at a version."""
+        return self._post(
+            f"/api/documents/{self.config.document_id}/workspaces",
+            {
+                "documentId": self.config.document_id,
+                "versionId": version_id,
+                "name": name,
+                "isReadOnly": False,
+            },
+        )
+
+    def delete_workspace(self, workspace_id: str) -> None:
+        """Discard a branch. This is the 'reset' in create/evaluate/reset."""
+        self._delete(
+            f"/api/documents/{self.config.document_id}/workspaces/{workspace_id}"
+        )
+
+    def merge_into_workspace(
+        self,
+        target_workspace_id: str,
+        *,
+        source_workspace_id: str | None = None,
+        source_version_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Merge a branch back into a target workspace (normally Main).
+
+        Exactly one of `source_workspace_id` / `source_version_id` is used.
+        Merge is the only branch operation the pipeline must never invoke on
+        the model's say-so -- plan.md puts merge permission behind the
+        code-enforced threshold check, not behind the LLM.
+        """
+        if bool(source_workspace_id) == bool(source_version_id):
+            raise ValueError(
+                "pass exactly one of source_workspace_id or source_version_id"
+            )
+        body: dict[str, Any] = {"documentId": self.config.document_id}
+        if source_workspace_id:
+            body["workspaceId"] = source_workspace_id
+        else:
+            body["versionId"] = source_version_id
+        return self._post(
+            f"/api/documents/{self.config.document_id}"
+            f"/workspaces/{target_workspace_id}/merge",
+            body,
+        )

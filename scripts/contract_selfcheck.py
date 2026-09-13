@@ -45,9 +45,18 @@ from earl.contracts import (  # noqa: E402
 # Classic benchmark is stated in imperial (360 in bays, E = 1e7 psi, P = 100
 # kips). The project contract is SI, so it is converted once, here, rather
 # than being half-converted in two places later.
+#
+# The benchmark material is ALUMINIUM, not steel: E = 1e7 psi, rho = 0.1
+# lb/in^3, allowable stress 25 ksi. A36 steel is E = 29e6 psi, 0.284 lb/in^3,
+# 36 ksi. An earlier revision of this file paired the benchmark's E with
+# steel's density and steel's yield -- a mix of two materials, and the yield
+# half mattered: capacity, and therefore every safety factor, read about 44%
+# higher than the benchmark allows. Kept in step with
+# `earl/ingestion/benchmark.py`, which is the pipeline's single source.
 IN = 0.0254            # in -> m
-E_STEEL = 6.895e10     # 1e7 psi -> Pa
-YIELD = 2.48e8         # ~36 ksi -> Pa
+E_AL = 6.895e10        # 1e7 psi -> Pa
+ALLOWABLE = 1.724e8    # 25 ksi -> Pa; sets member capacity
+DENSITY = 2768.0       # 0.1 lb/in^3 -> kg/m^3
 AREA = 1.0 * IN**2     # 1 in^2 -> m^2
 P = 444_822.0          # 100 kips -> N
 
@@ -69,7 +78,7 @@ def build_graph() -> DependencyGraph:
         ("m10", "n4", "n1"),
     ]
     members = [
-        Member(mid, a, b, section_id="sec_1in2", material_id="mat_steel",
+        Member(mid, a, b, section_id="sec_1in2", material_id="mat_al",
                onshape_id=f"onshape-part-{mid}")
         for mid, a, b in connectivity
     ]
@@ -92,7 +101,15 @@ def build_graph() -> DependencyGraph:
         ),
         nodes=nodes,
         members=members,
-        materials=[Material("mat_steel", "A36 Steel", E_STEEL, YIELD, density=7850.0)],
+        materials=[
+            Material(
+                "mat_al",
+                "Benchmark aluminium (E = 10^7 psi)",
+                E_AL,
+                ALLOWABLE,
+                density=DENSITY,
+            )
+        ],
         sections=[Section("sec_1in2", "1 in^2 bar", AREA)],
         load_cases=[
             LoadCase(
@@ -135,10 +152,10 @@ def build_decision(graph: DependencyGraph) -> Decision:
                 member_id=m.id,
                 status=status,
                 stress_before=1.10e8,
-                stress_after=YIELD / sf,
+                stress_after=ALLOWABLE / sf,
                 safety_factor=sf,
                 utilization=1 / sf,
-                capacity=YIELD,
+                capacity=ALLOWABLE,
                 is_affected=affected,
                 onshape_id=m.onshape_id,
             )

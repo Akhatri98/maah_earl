@@ -1268,7 +1268,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1281,7 +1281,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1294,7 +1294,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1307,7 +1307,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1320,7 +1320,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1333,7 +1333,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1346,7 +1346,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1359,7 +1359,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1372,7 +1372,7 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       },
       {
         "isStandardContent": false,
@@ -1385,14 +1385,14 @@
         "configuration": "default",
         "documentId": "74352477fea92ae1dadf61d6",
         "elementId": "1a595ebc191cbaa887523bc7",
-        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+        "documentMicroversion": "02887695b3aefddb1810334d"
       }
     ],
     "fullConfiguration": "default",
     "configuration": "default",
     "documentId": "74352477fea92ae1dadf61d6",
     "elementId": "72f445c1fb5399de58418375",
-    "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    "documentMicroversion": "02887695b3aefddb1810334d"
   },
   "subAssemblies": [],
   "parts": [
@@ -1400,101 +1400,621 @@
       "isStandardContent": false,
       "partId": "JND",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m2_n1"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m2_n3"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JlD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m6_n2"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m6_n1"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "J9D",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m10_n1"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m10_n4"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JZD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m4_n4"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m4_n2"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JHD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m1_n3"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              0.0,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m1_n5"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JxD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m8_n6"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m8_n3"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JfD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m5_n4"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m5_n3"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "J3D",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m9_n3"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              18.288,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m9_n2"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JTD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m3_n6"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m3_n4"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     },
     {
       "isStandardContent": false,
       "partId": "JrD",
       "bodyType": "solid",
+      "mateConnectors": [
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              9.144,
+              0.0,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m7_n4"
+        },
+        {
+          "mateConnectorCS": {
+            "xAxis": [
+              1.0,
+              0.0,
+              0.0
+            ],
+            "yAxis": [
+              0.0,
+              1.0,
+              0.0
+            ],
+            "zAxis": [
+              0.0,
+              0.0,
+              1.0
+            ],
+            "origin": [
+              0.0,
+              9.144,
+              0.0
+            ]
+          },
+          "featureId": "Fy6h0YTd3hERFAy_0.m7_n5"
+        }
+      ],
       "fullConfiguration": "default",
       "configuration": "default",
       "documentId": "74352477fea92ae1dadf61d6",
       "elementId": "1a595ebc191cbaa887523bc7",
-      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      "documentMicroversion": "02887695b3aefddb1810334d"
     }
   ],
   "partStudioFeatures": []
