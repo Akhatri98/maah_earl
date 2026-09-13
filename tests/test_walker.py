@@ -139,7 +139,22 @@ class TestSeeding(unittest.TestCase):
         )
         seeds, problems = seed_ids(graph)
         self.assertEqual(seeds, ["someVariable"])
-        self.assertTrue(any("not variable_edit" in p for p in problems))
+        # The complaint names the offending kind and the kinds that may
+        # legitimately target a non-entity (variable_edit, member_removed).
+        self.assertTrue(any("feature_edit" in p for p in problems))
+        self.assertTrue(any("variable_edit" in p for p in problems))
+
+    def test_a_removed_member_may_target_a_non_entity_without_complaint(self):
+        """A MEMBER_REMOVED change names the member it just deleted, which is
+        no longer in `graph.members` -- that is the change, not a defect."""
+        change = ChangeEvent(
+            id="c", kind=ChangeKind.MEMBER_REMOVED,
+            description="removed m99", target_id="m99",
+        )
+        graph = toy_graph(change, [Edge("m99", "m1", EdgeKind.TOPOLOGY)])
+        seeds, problems = seed_ids(graph)
+        self.assertEqual(seeds, ["m99"])
+        self.assertEqual(problems, [])
 
 
 class TestCompleteness(unittest.TestCase):

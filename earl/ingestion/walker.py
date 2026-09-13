@@ -50,6 +50,13 @@ from ..contracts.graph import (
 )
 
 
+# Change kinds whose target is legitimately not an entity in the structure:
+# a variable never was one, and a removed member has just stopped being one.
+_MAY_TARGET_NON_ENTITY = frozenset(
+    {ChangeKind.VARIABLE_EDIT, ChangeKind.MEMBER_REMOVED}
+)
+
+
 @dataclass(frozen=True)
 class Reach:
     """How the walk arrived at one entity.
@@ -118,11 +125,19 @@ class WalkResult:
 def seed_ids(graph: DependencyGraph) -> tuple[list[str], list[str]]:
     """Where the walk starts, and any complaints about starting there.
 
-    The change target is usually a member or node id, but a VARIABLE_EDIT
-    names a variable instead -- which is not an entity in the structure. The
-    contract allows that (`validate()` admits `change.target_id` as an edge
-    endpoint), and `graph_builder` emits VARIABLE_REF edges from the changed
-    variable to what it drives, so the variable itself is a legitimate seed.
+    The change target is usually a member or node id, but two change kinds
+    legitimately name something that is not in the structure:
+
+    * a VARIABLE_EDIT names a variable, which was never an entity;
+    * a MEMBER_REMOVED names the member it just deleted, which is no longer
+      one -- the whole point of the change.
+
+    The contract allows both (`validate()` admits `change.target_id` as an
+    edge endpoint), and the edges that hang off the target are what the walk
+    follows: VARIABLE_REF edges from the changed variable to what it drives,
+    or the removed member's surviving TOPOLOGY edges to the neighbours that
+    now carry its load. Any OTHER kind naming a non-entity is a real problem
+    and is reported.
     """
     target = graph.change.target_id
     member_ids = {m.id for m in graph.members}
@@ -135,10 +150,11 @@ def seed_ids(graph: DependencyGraph) -> tuple[list[str], list[str]]:
     # Not an entity -- only valid if something actually hangs off it.
     outgoing = [e for e in graph.edges if e.source_id == target]
     if outgoing:
-        if graph.change.kind is not ChangeKind.VARIABLE_EDIT:
+        if graph.change.kind not in _MAY_TARGET_NON_ENTITY:
+            expected = " or ".join(sorted(k.value for k in _MAY_TARGET_NON_ENTITY))
             problems.append(
                 f"change target {target!r} is not a member or node, but the "
-                f"change kind is {graph.change.kind.value}, not variable_edit"
+                f"change kind is {graph.change.kind.value}, not {expected}"
             )
         return [target], problems
 

@@ -27,11 +27,13 @@ python3 -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\acti
 pip install -r requirements.txt
 cp .env.example .env                                # fill in what you have; everything below runs without it
 
-python3 -m unittest discover -s tests -t . -q        # 647 tests, all offline
+python3 -m unittest discover -s tests -t . -q        # 723 tests, all offline
 
 python3 scripts/run_pipeline.py                      # the demo change, every stage, offline
 python3 scripts/run_pipeline.py --onshape-fixture    # Track A's graph builder on the recorded Onshape read
 python3 scripts/run_pipeline.py --skyciv --send      # live SkyCiv + Gmail (needs credentials)
+python3 scripts/run_eval.py                          # the 20-scenario replay: zero dropped dominoes
+python3 scripts/run_eval.py --agents system,baseline # + the baseline LLM agent (needs META_MUSE_KEY)
 python3 scripts/validate_solver.py                   # PyNite vs the published 10-bar truss optimum
 python3 scripts/contract_selfcheck.py                # the shared contracts and their guardrails
 ```
@@ -56,6 +58,7 @@ domino the project exists to catch.
 | `earl/analysis` | PyNite solver, Biject thresholds, planner, benchmark, scoreboard, SVG | B |
 | `earl/artifacts` | SkyCiv client, escalation, cross-check | B |
 | `earl/delivery` | ECN template and renderers, Gmail delivery | A |
+| `earl/eval` | the 20-scenario replay and the baseline agent (Sprint 5A) | A |
 | `earl/pipeline.py` | the end-to-end wire (Sprint 4) | both |
 
 ## Conventions that bite
@@ -68,3 +71,31 @@ domino the project exists to catch.
   stress. See `earl/contracts/README.md`.
 - **The threshold floor is code.** `SAFETY_FACTOR_THRESHOLD` in `.env` can only
   raise the bar above 1.0; a value below it raises before anything is solved.
+
+## The number
+
+`scripts/run_eval.py` replays twenty parametric perturbations of the validated
+truss — resize, remove, add a load, move a load, edit a variable. Eleven are
+unsafe and nine are safe by the validated solver, and in ten of the eleven the
+member that fails is **not** the one the change names.
+
+```
+| agent    | scenarios | unsafe members | caught | dropped dominoes | false alarms | recall |
+|----------|----------:|---------------:|-------:|-----------------:|-------------:|-------:|
+| system   |        20 |             22 |     22 |                0 |            0 |   1.00 |
+| baseline |        20 |             22 |     22 |                0 |            0 |   1.00 |
+```
+
+**The baseline ties the system on this set, and that is the measured result.**
+A tool-using LLM on the same model, with no graph traversal and no enforced
+threshold, found every unsafe member and raised no false alarms — because one
+`solve_load_case` call returns all ten members' stresses, so on a structure
+this small there is nothing for a dependency walk to find that brute force
+does not. The traversal advantage `plan.md` claims is real in principle but is
+**not demonstrated by this experiment**.
+
+What the twenty scenarios do still show is that the system is right every
+time, deterministically, with a paper trail. See
+[`earl/eval/README.md`](earl/eval/README.md) for the full finding, what it
+does and does not license the project to claim, and the axes on which the two
+agents might still differ.

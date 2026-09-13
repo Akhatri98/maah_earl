@@ -40,6 +40,34 @@ Delivered as `earl/pipeline.py` (`run_pipeline`), `earl/delivery/gmail.py`, cont
 |---|---|
 | Eval harness — ~20 scenarios from parametrically perturbing the validated truss; baseline LLM+PyNite-only agent (no graph traversal, no enforced thresholds) for comparison | Dropped-dominoes scoreboard (baseline vs. system) and demo visualization of the truss with per-member state |
 
+**Track B was already done before this sprint started.** `earl/analysis/scoreboard.py`
+and `earl/analysis/visualize.py` shipped in `0a801d4` (the Sprint 1B–3B merge)
+and the SVG is wired into `earl/pipeline.py`. Sprint 5 was therefore Track A
+alone, building to a finished interface rather than a parallel one.
+
+**Sprint 5A — done, with a finding that matters for the demo.** `earl/eval/`
+(scenarios, agents, tools, llm, baseline, harness) plus `scripts/run_eval.py`;
+100 new tests, 747 passing. Twenty scenarios across all five change kinds,
+11 unsafe / 9 safe by the validated solver, with the failing member different
+from the edited one in 10 of the 11. Everything runs on Meta Muse, baseline
+included.
+
+First full live run, both agents:
+
+| agent | scenarios | unsafe members | caught | dropped dominoes | false alarms |
+|---|---:|---:|---:|---:|---:|
+| system | 20 | 22 | 22 | 0 | 0 |
+| baseline | 20 | 22 | 22 | 0 | 0 |
+
+**The baseline tied the system.** One `solve_load_case` call returns all ten
+members' stresses, so on a structure this small there is nothing for a
+dependency walk to find that brute force does not — the traversal advantage is
+real in principle but is not demonstrated by this experiment. The system's
+determinism, its code-enforced threshold and its paper trail are unaffected
+and still hold. Full write-up, including the three axes on which a real gap
+might still exist, in `earl/eval/README.md`. **This needs a decision before
+Sprint 6 fixes the demo narrative in place.**
+
 ### Sprint 6 — Demo polish & dry run (both)
 Run the full demo flow end to end, tighten the escalation example, rehearse the close on the scoreboard number.
 
