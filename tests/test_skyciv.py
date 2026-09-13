@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from contract_selfcheck import AREA, E_STEEL, IN, P, YIELD, build_graph  # noqa: E402
+from contract_selfcheck import AREA, IN, P, build_graph  # noqa: E402
 
 from earl.artifacts import skyciv_client as sc  # noqa: E402
 from earl.artifacts.skyciv_client import (  # noqa: E402
@@ -159,10 +159,13 @@ class TestBuildS3DModel(unittest.TestCase):
 
     def test_material_in_mpa(self):
         (mat,) = self.model["materials"].values()
-        self.assertAlmostEqual(mat["elasticity_modulus"], E_STEEL * 1e-6)
-        self.assertAlmostEqual(mat["yield_strength"], YIELD * 1e-6)
-        self.assertAlmostEqual(mat["ultimate_strength"], 1.3 * YIELD * 1e-6)
-        self.assertEqual(mat["density"], 7850.0)
+        # Expected values come from the graph itself, not from the shared
+        # self-check script's constants (Track A renamed those once already).
+        source = self.graph.materials[0]
+        self.assertAlmostEqual(mat["elasticity_modulus"], source.elastic_modulus * 1e-6)
+        self.assertAlmostEqual(mat["yield_strength"], source.yield_strength * 1e-6)
+        self.assertAlmostEqual(mat["ultimate_strength"], 1.3 * source.yield_strength * 1e-6)
+        self.assertAlmostEqual(mat["density"], source.density)
         self.assertEqual(mat["poissons_ratio"], 0.3)
         self.assertEqual(mat["class"], "steel")
 
