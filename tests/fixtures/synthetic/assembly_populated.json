@@ -1,0 +1,96 @@
+{
+  "_comment": "SYNTHETIC fixture, hand-built to Onshape's documented assembly-definition shape. The live document is still empty, so this stands in until the truss is modelled. Replace with a recorded response once real geometry exists.",
+  "rootAssembly": {
+    "documentId": "74352477fea92ae1dadf61d6",
+    "elementId": "72f445c1fb5399de58418375",
+    "configuration": "default",
+    "fullConfiguration": "default",
+    "patterns": [],
+    "parametricInstances": [],
+    "instances": [
+      {
+        "id": "MInst1",
+        "name": "Member m1 <1>",
+        "type": "Part",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "partId": "JHD",
+        "suppressed": false
+      },
+      {
+        "id": "MInst2",
+        "name": "Member m2 <1>",
+        "type": "Part",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "partId": "JHD",
+        "suppressed": false
+      },
+      {
+        "id": "MInst3",
+        "name": "Gusset <1>",
+        "type": "Part",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "partId": "KLM",
+        "suppressed": false
+      },
+      {
+        "id": "MInst4",
+        "name": "Spare bracket <1>",
+        "type": "Part",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "partId": "ZZZ",
+        "suppressed": true
+      }
+    ],
+    "features": [
+      {
+        "id": "FMate1",
+        "featureId": "FMate1",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Fastened 1",
+          "mateType": "FASTENED",
+          "matedEntities": [
+            { "matedOccurrence": ["MInst1"] },
+            { "matedOccurrence": ["MInst3"] }
+          ]
+        }
+      },
+      {
+        "id": "FMate2",
+        "featureId": "FMate2",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "name": "Revolute 1",
+          "mateType": "REVOLUTE",
+          "matedEntities": [
+            { "matedOccurrence": ["MInst2"] },
+            { "matedOccurrence": ["MInst3"] }
+          ]
+        }
+      },
+      {
+        "id": "FMate3",
+        "featureId": "FMate3",
+        "featureType": "mate",
+        "suppressed": true,
+        "featureData": {
+          "name": "Fastened 2 (suppressed)",
+          "mateType": "FASTENED",
+          "matedEntities": [
+            { "matedOccurrence": ["MInst4"] },
+            { "matedOccurrence": ["MInst1"] }
+          ]
+        }
+      }
+    ]
+  },
+  "subAssemblies": [],
+  "parts": [],
+  "partStudioFeatures": []
+}

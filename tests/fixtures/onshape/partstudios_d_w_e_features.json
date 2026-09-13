@@ -1,0 +1,151 @@
+{
+  "features": [],
+  "imports": [
+    {
+      "type": 136,
+      "typeName": "BTMImport",
+      "message": {
+        "path": "onshape/std/geometry.fs",
+        "version": "3070.0",
+        "namespace": "",
+        "hasUserCode": false,
+        "nodeId": "MRwdzF0+b5zBUZhRp"
+      }
+    }
+  ],
+  "featureStates": [
+    {
+      "key": "Origin",
+      "value": {
+        "type": 1688,
+        "typeName": "BTFeatureState",
+        "message": {
+          "featureStatus": "OK",
+          "inactive": false
+        }
+      }
+    },
+    {
+      "key": "Top",
+      "value": {
+        "type": 1688,
+        "typeName": "BTFeatureState",
+        "message": {
+          "featureStatus": "OK",
+          "inactive": false
+        }
+      }
+    },
+    {
+      "key": "Front",
+      "value": {
+        "type": 1688,
+        "typeName": "BTFeatureState",
+        "message": {
+          "featureStatus": "OK",
+          "inactive": false
+        }
+      }
+    },
+    {
+      "key": "Right",
+      "value": {
+        "type": 1688,
+        "typeName": "BTFeatureState",
+        "message": {
+          "featureStatus": "OK",
+          "inactive": false
+        }
+      }
+    }
+  ],
+  "isComplete": true,
+  "rollbackIndex": 0,
+  "defaultFeatures": [
+    {
+      "type": 134,
+      "typeName": "BTMFeature",
+      "message": {
+        "featureType": "origin",
+        "featureId": "Origin",
+        "name": "Origin",
+        "parameters": [],
+        "suppressed": false,
+        "namespace": "",
+        "subFeatures": [],
+        "returnAfterSubfeatures": false,
+        "suppressionState": {
+          "type": 0
+        },
+        "parameterLibraries": [],
+        "hasUserCode": false,
+        "nodeId": "MRgADVG/tHYqnapBJ"
+      }
+    },
+    {
+      "type": 134,
+      "typeName": "BTMFeature",
+      "message": {
+        "featureType": "defaultPlane",
+        "featureId": "Top",
+        "name": "Top",
+        "parameters": [],
+        "suppressed": false,
+        "namespace": "",
+        "subFeatures": [],
+        "returnAfterSubfeatures": false,
+        "suppressionState": {
+          "type": 0
+        },
+        "parameterLibraries": [],
+        "hasUserCode": false,
+        "nodeId": "MezYyQiypAXIRfJl0"
+      }
+    },
+    {
+      "type": 134,
+      "typeName": "BTMFeature",
+      "message": {
+        "featureType": "defaultPlane",
+        "featureId": "Front",
+        "name": "Front",
+        "parameters": [],
+        "suppressed": false,
+        "namespace": "",
+        "subFeatures": [],
+        "returnAfterSubfeatures": false,
+        "suppressionState": {
+          "type": 0
+        },
+        "parameterLibraries": [],
+        "hasUserCode": false,
+        "nodeId": "MRXltbS6/Zd0xTDt0"
+      }
+    },
+    {
+      "type": 134,
+      "typeName": "BTMFeature",
+      "message": {
+        "featureType": "defaultPlane",
+        "featureId": "Right",
+        "name": "Right",
+        "parameters": [],
+        "suppressed": false,
+        "namespace": "",
+        "subFeatures": [],
+        "returnAfterSubfeatures": false,
+        "suppressionState": {
+          "type": 0
+        },
+        "parameterLibraries": [],
+        "hasUserCode": false,
+        "nodeId": "MJDbEIC8JcyhfQmrN"
+      }
+    }
+  ],
+  "serializationVersion": "1.2.21",
+  "sourceMicroversion": "8a1ed7bb0bca81a36d9a72c8",
+  "rejectMicroversionSkew": false,
+  "microversionSkew": false,
+  "libraryVersion": 3070
+}

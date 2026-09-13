@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local env backups (contain real credentials)
+.env.bak
+.env.local

@@ -1,0 +1,36 @@
+[
+  {
+    "_comment": "SYNTHETIC fixture to Onshape's documented variable-table shape. Note `value` is SI (metres) even where `expression` is authored in inches -- the parser keeps both deliberately.",
+    "variableStudioReference": null,
+    "variables": [
+      {
+        "type": "LENGTH",
+        "name": "bayWidth",
+        "expression": "360 in",
+        "value": 9.144,
+        "description": "Truss bay width"
+      },
+      {
+        "type": "LENGTH",
+        "name": "bayHeight",
+        "expression": "360 in",
+        "value": 9.144,
+        "description": "Truss bay height"
+      },
+      {
+        "type": "AREA",
+        "name": "barArea",
+        "expression": "1 in^2",
+        "value": 0.00064516,
+        "description": "Default member cross-sectional area"
+      },
+      {
+        "type": "NUMBER",
+        "name": "safetyFactor",
+        "expression": "1.5",
+        "value": 1.5,
+        "description": "Design safety factor"
+      }
+    ]
+  }
+]
