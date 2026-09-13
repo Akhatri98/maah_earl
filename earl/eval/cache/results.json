@@ -1,0 +1,1207 @@
+{
+  "baseline_selection_order": "before post-change solver results",
+  "benchmark_passed": true,
+  "catalogue_sha256": "45b986d0f7438b9f43741fd84d5817091500efa5d3def356a4952bcce39781fb",
+  "metric": "A surviving member below the design target after the edit and absent from the system's failure report.",
+  "protocol": "selection-required-v1",
+  "scenarios": [
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m5",
+          "m7",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m3",
+          "m4",
+          "m6",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Resize m1 from 20 to 22 in^2.",
+        "field_name": "area",
+        "id": "reinforce-chord",
+        "kind": "feature_edit",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.01419352,
+        "numeric_before": 0.0129032,
+        "target_id": "m1",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "reinforce-chord",
+      "kind": "area",
+      "name": "Reinforce m1: 22 in^2",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m8"
+        ],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m5",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m4",
+          "m6",
+          "m7",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Resize m8 from 20 to 8 in^2.",
+        "field_name": "area",
+        "id": "thin-compression",
+        "kind": "feature_edit",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.00516128,
+        "numeric_before": 0.0129032,
+        "target_id": "m8",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "thin-compression",
+      "kind": "area",
+      "name": "Thin m8: 8 in^2",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m8"
+        ],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m5",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m4",
+          "m6",
+          "m7",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Resize m8 from 20 to 16 in^2.",
+        "field_name": "area",
+        "id": "design-margin",
+        "kind": "feature_edit",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.01032256,
+        "numeric_before": 0.0129032,
+        "target_id": "m8",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "design-margin",
+      "kind": "area",
+      "name": "Reduce m8: 16 in^2",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 2,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m3",
+          "m8"
+        ],
+        "selected_member_ids": [
+          "m3",
+          "m4",
+          "m5",
+          "m7",
+          "m8",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m2",
+          "m6",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Resize m3 from 20 to 5 in^2.",
+        "field_name": "area",
+        "id": "thin-bottom-chord",
+        "kind": "feature_edit",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0032258,
+        "numeric_before": 0.0129032,
+        "target_id": "m3",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 2,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m3",
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m3",
+        "m8"
+      ],
+      "id": "thin-bottom-chord",
+      "kind": "area",
+      "name": "Thin m3: 5 in^2",
+      "newly_failing_ids": [
+        "m3",
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m10"
+        ],
+        "selected_member_ids": [
+          "m2",
+          "m3",
+          "m4",
+          "m5",
+          "m6",
+          "m7",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Resize m10 from 20 to 4 in^2.",
+        "field_name": "area",
+        "id": "thin-diagonal",
+        "kind": "feature_edit",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.00258064,
+        "numeric_before": 0.0129032,
+        "target_id": "m10",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m10"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m10"
+      ],
+      "id": "thin-diagonal",
+      "kind": "area",
+      "name": "Thin m10: 4 in^2",
+      "newly_failing_ids": [
+        "m10"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 1,
+        "dropped_member_ids": [
+          "m3"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m2",
+          "m5",
+          "m7",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m3",
+          "m4",
+          "m6",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Remove member m1.",
+        "field_name": "present",
+        "id": "remove-m1",
+        "kind": "member_removed",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0,
+        "numeric_before": 1.0,
+        "target_id": "m1",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m3"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m3"
+      ],
+      "id": "remove-m1",
+      "kind": "remove",
+      "name": "Remove top chord m1",
+      "newly_failing_ids": [
+        "m3"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m8"
+        ],
+        "selected_member_ids": [
+          "m4",
+          "m5",
+          "m7",
+          "m8",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m2",
+          "m6",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Remove member m3.",
+        "field_name": "present",
+        "id": "remove-m3",
+        "kind": "member_removed",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0,
+        "numeric_before": 1.0,
+        "target_id": "m3",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "remove-m3",
+      "kind": "remove",
+      "name": "Remove bottom chord m3",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m4",
+          "m7",
+          "m8",
+          "m9",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m6"
+        ]
+      },
+      "change": {
+        "description": "Remove member m5.",
+        "field_name": "present",
+        "id": "remove-m5",
+        "kind": "member_removed",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0,
+        "numeric_before": 1.0,
+        "target_id": "m5",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "remove-m5",
+      "kind": "remove",
+      "name": "Remove vertical m5",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 1,
+        "dropped_member_ids": [
+          "m8"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m3",
+          "m4",
+          "m5",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m2",
+          "m6",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Remove member m7.",
+        "field_name": "present",
+        "id": "remove-m7",
+        "kind": "member_removed",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0,
+        "numeric_before": 1.0,
+        "target_id": "m7",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "remove-m7",
+      "kind": "remove",
+      "name": "Remove diagonal m7",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m5",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m4",
+          "m6",
+          "m7",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Remove member m8.",
+        "field_name": "present",
+        "id": "remove-m8",
+        "kind": "member_removed",
+        "load_case_id": "lc_1",
+        "node_after": null,
+        "node_before": null,
+        "numeric_after": 0.0,
+        "numeric_before": 1.0,
+        "target_id": "m8",
+        "target_kind": "member",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "remove-m8",
+      "kind": "remove",
+      "name": "Remove compression diagonal m8",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 1,
+        "dropped_member_ids": [
+          "m8"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m2",
+          "m6",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m3",
+          "m4",
+          "m5",
+          "m7",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Add 20 kN downward at n1.",
+        "field_name": "fy",
+        "id": "add-load-n1-20",
+        "kind": "load_added",
+        "load_case_id": "lc_1",
+        "node_after": "n1",
+        "node_before": null,
+        "numeric_after": -20000.0,
+        "numeric_before": 0.0,
+        "target_id": "p_added",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "add-load-n1-20",
+      "kind": "add_load",
+      "name": "Add 20 kN at n1",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 2,
+        "dropped_member_ids": [
+          "m3",
+          "m8"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m10"
+        ],
+        "selected_member_ids": [
+          "m2",
+          "m6",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m3",
+          "m4",
+          "m5",
+          "m7",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Add 100 kN downward at n1.",
+        "field_name": "fy",
+        "id": "add-load-n1-100",
+        "kind": "load_added",
+        "load_case_id": "lc_1",
+        "node_after": "n1",
+        "node_before": null,
+        "numeric_after": -100000.0,
+        "numeric_before": 0.0,
+        "target_id": "p_added",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 3,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m3",
+          "m8",
+          "m10"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m3",
+        "m8",
+        "m10"
+      ],
+      "id": "add-load-n1-100",
+      "kind": "add_load",
+      "name": "Add 100 kN at n1",
+      "newly_failing_ids": [
+        "m3",
+        "m8",
+        "m10"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 3,
+        "dropped_member_ids": [
+          "m3",
+          "m8",
+          "m10"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m4",
+          "m6",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m5",
+          "m7",
+          "m8",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Add 80 kN downward at n2.",
+        "field_name": "fy",
+        "id": "add-load-n2-80",
+        "kind": "load_added",
+        "load_case_id": "lc_1",
+        "node_after": "n2",
+        "node_before": null,
+        "numeric_after": -80000.0,
+        "numeric_before": 0.0,
+        "target_id": "p_added",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 3,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m3",
+          "m8",
+          "m10"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m3",
+        "m8",
+        "m10"
+      ],
+      "id": "add-load-n2-80",
+      "kind": "add_load",
+      "name": "Add 80 kN at n2",
+      "newly_failing_ids": [
+        "m3",
+        "m8",
+        "m10"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 1,
+        "dropped_member_ids": [
+          "m3"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [
+          "m8"
+        ],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m5",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m3",
+          "m4",
+          "m6",
+          "m7",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Add 120 kN downward at n3.",
+        "field_name": "fy",
+        "id": "add-load-n3-120",
+        "kind": "load_added",
+        "load_case_id": "lc_1",
+        "node_after": "n3",
+        "node_before": null,
+        "numeric_after": -120000.0,
+        "numeric_before": 0.0,
+        "target_id": "p_added",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 2,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m3",
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m3",
+        "m8"
+      ],
+      "id": "add-load-n3-120",
+      "kind": "add_load",
+      "name": "Add 120 kN at n3",
+      "newly_failing_ids": [
+        "m3",
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 1,
+        "dropped_member_ids": [
+          "m8"
+        ],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m3",
+          "m4",
+          "m5",
+          "m7",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m2",
+          "m6",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Add 50 kN downward at n4.",
+        "field_name": "fy",
+        "id": "add-load-n4-50",
+        "kind": "load_added",
+        "load_case_id": "lc_1",
+        "node_after": "n4",
+        "node_before": null,
+        "numeric_after": -50000.0,
+        "numeric_before": 0.0,
+        "target_id": "p_added",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 1,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "reported_member_ids": [
+          "m8"
+        ]
+      },
+      "ground_truth_failing_ids": [
+        "m8"
+      ],
+      "id": "add-load-n4-50",
+      "kind": "add_load",
+      "name": "Add 50 kN at n4",
+      "newly_failing_ids": [
+        "m8"
+      ]
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m2",
+          "m4",
+          "m6",
+          "m9",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m3",
+          "m5",
+          "m7",
+          "m8"
+        ]
+      },
+      "change": {
+        "description": "Move p1 (20 kN) from n2 to n1.",
+        "field_name": "node_id",
+        "id": "move-p1-n1",
+        "kind": "load_moved",
+        "load_case_id": "lc_1",
+        "node_after": "n1",
+        "node_before": "n2",
+        "numeric_after": null,
+        "numeric_before": null,
+        "target_id": "p1",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "move-p1-n1",
+      "kind": "move_load",
+      "name": "Move p1: n2 to n1",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m2",
+          "m3",
+          "m4",
+          "m5",
+          "m6",
+          "m7",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m8",
+          "m9"
+        ]
+      },
+      "change": {
+        "description": "Move p2 (20 kN) from n4 to n1.",
+        "field_name": "node_id",
+        "id": "move-p2-n1",
+        "kind": "load_moved",
+        "load_case_id": "lc_1",
+        "node_after": "n1",
+        "node_before": "n4",
+        "numeric_after": null,
+        "numeric_before": null,
+        "target_id": "p2",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "move-p2-n1",
+      "kind": "move_load",
+      "name": "Move p2: n4 to n1",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m4",
+          "m5",
+          "m6",
+          "m8",
+          "m9"
+        ],
+        "unverified_member_ids": [
+          "m3",
+          "m7",
+          "m10"
+        ]
+      },
+      "change": {
+        "description": "Move p1 (20 kN) from n2 to n3.",
+        "field_name": "node_id",
+        "id": "move-p1-n3",
+        "kind": "load_moved",
+        "load_case_id": "lc_1",
+        "node_after": "n3",
+        "node_before": "n2",
+        "numeric_after": null,
+        "numeric_before": null,
+        "target_id": "p1",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "move-p1-n3",
+      "kind": "move_load",
+      "name": "Move p1: n2 to n3",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m3",
+          "m4",
+          "m5",
+          "m6",
+          "m7",
+          "m9",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m1",
+          "m2",
+          "m8"
+        ]
+      },
+      "change": {
+        "description": "Move p2 (20 kN) from n4 to n2.",
+        "field_name": "node_id",
+        "id": "move-p2-n2",
+        "kind": "load_moved",
+        "load_case_id": "lc_1",
+        "node_after": "n2",
+        "node_before": "n4",
+        "numeric_after": null,
+        "numeric_before": null,
+        "target_id": "p2",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "move-p2-n2",
+      "kind": "move_load",
+      "name": "Move p2: n4 to n2",
+      "newly_failing_ids": []
+    },
+    {
+      "baseline": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "escalated",
+        "provenance": "rule-based baseline",
+        "reported_member_ids": [],
+        "selected_member_ids": [
+          "m1",
+          "m2",
+          "m3",
+          "m4",
+          "m5",
+          "m7",
+          "m8",
+          "m9",
+          "m10"
+        ],
+        "unverified_member_ids": [
+          "m6"
+        ]
+      },
+      "change": {
+        "description": "Move p2 (20 kN) from n4 to n3.",
+        "field_name": "node_id",
+        "id": "move-p2-n3",
+        "kind": "load_moved",
+        "load_case_id": "lc_1",
+        "node_after": "n3",
+        "node_before": "n4",
+        "numeric_after": null,
+        "numeric_before": null,
+        "target_id": "p2",
+        "target_kind": "load",
+        "value_after": null,
+        "value_before": null
+      },
+      "earl": {
+        "caught_dominoes": 0,
+        "dropped_dominoes": 0,
+        "dropped_member_ids": [],
+        "error": null,
+        "outcome": "approved",
+        "reported_member_ids": []
+      },
+      "ground_truth_failing_ids": [],
+      "id": "move-p2-n3",
+      "kind": "move_load",
+      "name": "Move p2: n4 to n3",
+      "newly_failing_ids": []
+    }
+  ],
+  "schema_version": "1.0",
+  "scope_note": "One ten-bar family; scope-selection omissions, not a claim about general LLM reliability or unsafe releases.",
+  "solver_version": "2.4.1",
+  "summary": {
+    "baseline": {
+      "analysis_errors": 0,
+      "caught_dominoes": 8,
+      "dropped_dominoes": 10,
+      "scenarios_with_drops": 7
+    },
+    "baseline_label": "rule-based baseline",
+    "earl": {
+      "analysis_errors": 0,
+      "caught_dominoes": 18,
+      "dropped_dominoes": 0,
+      "scenarios_with_drops": 0
+    },
+    "ground_truth_failures": 18,
+    "initial_failing_ids": [],
+    "scenario_count": 20
+  }
+}

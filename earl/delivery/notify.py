@@ -49,8 +49,9 @@ def deliver(decision: Decision, run_dir: Path, *, allow_live: bool = False) -> D
     decision.validate()
     load_env()
     run_dir.mkdir(parents=True, exist_ok=True)
-    recipient = _address(os.environ.get("EARL_NOTIFY_TO", ""), "responsible.engineer@example.com")
-    sender = _address(os.environ.get("GMAIL_SENDER", ""), "earl@example.com")
+    recipient = _address(os.environ.get("GMAIL_NOTIFY_RECIPIENT", os.environ.get("EARL_NOTIFY_TO", "")),
+                         "responsible.engineer@example.com")
+    sender = _address(os.environ.get("GMAIL_SENDER_ADDRESS", os.environ.get("GMAIL_SENDER", "")), "earl@example.com")
     subject = f"EARL {decision.outcome.value.upper()} | {' '.join(decision.change_description.split())[:120]}"
     rendered = ecn.render(decision)
     plain = ecn.text(decision)
@@ -67,7 +68,7 @@ def deliver(decision: Decision, run_dir: Path, *, allow_live: bool = False) -> D
     email_path.write_bytes(data)
     (run_dir / "email.txt").write_text(f"To: {recipient}\nSubject: {subject}\n\n{plain}", encoding="utf-8")
     status, note = "would be sent to", "Offline deliverable saved; no email was sent."
-    required = ("GMAIL_REFRESH_TOKEN", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "EARL_NOTIFY_TO", "GMAIL_SENDER")
+    required = ("GMAIL_REFRESH_TOKEN", "GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET")
     if (allow_live and not demo_mode() and all(os.environ.get(k) for k in required)
             and not recipient.endswith("@example.com") and not sender.endswith("@example.com")):
         try:

@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import time
+from math import isfinite
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -89,12 +90,17 @@ def parse_response(response: dict, *, fingerprint: str, member_id: str,
     if response.get("model_fingerprint") != fingerprint or response.get("member_id") != member_id:
         raise ValueError("recorded SkyCiv response does not match this exact model/member")
     raw = response["raw_response"]
+    if any(function.get("status") != 0 for function in raw.get("functions", [])):
+        raise ValueError("one or more SkyCiv functions failed")
     values = _function(raw, "S3D.results.fetchMemberResult")
     if not isinstance(values, list) or len(values) != 1 or not values[0]:
         raise ValueError("expected one load combination of member station results")
     # SkyCiv's explicitly selected force unit is kN. Compare demand magnitudes;
     # the distinct PyNite axial sign convention is not evidence of disagreement.
-    force = max(abs(float(v)) for v in values[0]) * 1000
+    stations = [float(value) for value in values[0]]
+    if not all(isfinite(value) for value in stations):
+        raise ValueError("nonfinite SkyCiv station result")
+    force = max(abs(value) for value in stations) * 1000
     report_data = _function(raw, "S3D.results.getAnalysisReport")
     link = report_data.get("view_link") or report_data.get("download_link")
     if not link or not _trusted_report_url(link):
@@ -211,11 +217,15 @@ def _write_reference(run_dir: Path, report: SkyCivReport, cross: CrossCheck) -> 
     record = {"report": report.to_dict(), "cross_check": cross.to_dict()}
     (run_dir / "report.json").write_text(json.dumps(record, indent=2, allow_nan=False), encoding="utf-8")
     e = html.escape
-    link = "skyciv-pdf" if report.local_path and report.model_fingerprint else "/api/fixture/skyciv"
+    if report.model_fingerprint:
+        link = "skyciv-pdf" if report.local_path else report.url
+        link_label = "Open locally recorded PDF" if report.local_path else "Open SkyCiv report (network required)"
+    else:
+        link, link_label = "/api/fixture/skyciv", "Open locally recorded example PDF (different model)"
     body = f"""<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>EARL report reference</title><style>body{{font:15px system-ui;max-width:760px;margin:40px auto;padding:0 24px;color:#242a2c;line-height:1.6}}a{{color:#176d55}}aside{{border-left:3px solid #b77914;padding:12px 18px;background:#fff8e9}}code{{overflow-wrap:anywhere}}</style>
 <h1>Report reference</h1><p><code>{e(report.report_id)}</code></p><aside><strong>{e(report.provenance)}</strong><p>{e(report.note or '')}</p></aside>
 <p>Independent numerical cross-check: <strong>{'performed' if cross.performed else 'NOT PERFORMED'}</strong>.</p>
-<p>{e(cross.note or '')}</p><p><a href="{e(link, quote=True)}">Open locally available PDF</a></p>
+<p>{e(cross.note or '')}</p><p><a href="{e(link, quote=True)}">{link_label}</a></p>
 <p>Onshape Simulation already provides assembly linear static analysis, stress, displacement, and safety factors. SkyCiv provides analysis and reports. EARL adds the acceptance gate, notification, and decision record, not better physics.</p></html>"""
     (run_dir / "report.html").write_text(body, encoding="utf-8")

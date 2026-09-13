@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: earl-astra
+    runtime: docker
+    repo: https://github.com/Akhatri98/maah_earl
+    branch: astra
+    plan: free
+    region: ohio
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: DEMO_MODE
+        value: "true"
+      - key: HARD_FLOOR
+        value: "1.0"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"

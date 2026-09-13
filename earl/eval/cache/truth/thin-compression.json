@@ -1,0 +1,1830 @@
+{
+  "after_graph": {
+    "affected_member_ids": [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10"
+    ],
+    "affected_node_ids": [
+      "n1",
+      "n2",
+      "n3",
+      "n4",
+      "n5",
+      "n6"
+    ],
+    "change": {
+      "description": "Resize m8 from 20 to 8 in^2.",
+      "field_name": "area",
+      "id": "thin-compression",
+      "kind": "feature_edit",
+      "load_case_id": "lc_1",
+      "node_after": null,
+      "node_before": null,
+      "numeric_after": 0.00516128,
+      "numeric_before": 0.0129032,
+      "target_id": "m8",
+      "target_kind": "member",
+      "value_after": null,
+      "value_before": null
+    },
+    "design_target": 1.5,
+    "edges": [
+      {
+        "kind": "mate",
+        "source_id": "m1",
+        "target_id": "m2"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m2",
+        "target_id": "m1"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m2",
+        "target_id": "m3"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m3",
+        "target_id": "m2"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m3",
+        "target_id": "m4"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m4",
+        "target_id": "m3"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m4",
+        "target_id": "m5"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m5",
+        "target_id": "m4"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m5",
+        "target_id": "m6"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m6",
+        "target_id": "m5"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m6",
+        "target_id": "m7"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m7",
+        "target_id": "m6"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m7",
+        "target_id": "m8"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m8",
+        "target_id": "m7"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m8",
+        "target_id": "m9"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m9",
+        "target_id": "m8"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m9",
+        "target_id": "m10"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m10",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m7"
+      }
+    ],
+    "hard_floor": 1.0,
+    "id": "graph-selfcheck-001",
+    "load_cases": [
+      {
+        "id": "lc_1",
+        "include_self_weight": false,
+        "name": "Benchmark load case",
+        "point_loads": [
+          {
+            "fx": 0.0,
+            "fy": -20000.0,
+            "fz": 0.0,
+            "id": "p1",
+            "node_id": "n2"
+          },
+          {
+            "fx": 0.0,
+            "fy": -20000.0,
+            "fz": 0.0,
+            "id": "p2",
+            "node_id": "n4"
+          }
+        ]
+      }
+    ],
+    "mapping_warnings": [],
+    "materials": [
+      {
+        "density": 0.0,
+        "elastic_modulus": 68950000000.0,
+        "id": "mat_steel",
+        "name": "Illustrative benchmark material",
+        "yield_strength": 248000000.0
+      }
+    ],
+    "members": [
+      {
+        "end_node": "n3",
+        "id": "m1",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m1",
+        "section_id": "sec_1in2",
+        "start_node": "n5"
+      },
+      {
+        "end_node": "n1",
+        "id": "m2",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m2",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n4",
+        "id": "m3",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m3",
+        "section_id": "sec_1in2",
+        "start_node": "n6"
+      },
+      {
+        "end_node": "n2",
+        "id": "m4",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m4",
+        "section_id": "sec_1in2",
+        "start_node": "n4"
+      },
+      {
+        "end_node": "n4",
+        "id": "m5",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m5",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n2",
+        "id": "m6",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m6",
+        "section_id": "sec_1in2",
+        "start_node": "n1"
+      },
+      {
+        "end_node": "n4",
+        "id": "m7",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m7",
+        "section_id": "sec_1in2",
+        "start_node": "n5"
+      },
+      {
+        "end_node": "n3",
+        "id": "m8",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m8",
+        "section_id": "section_m8_thin-compression",
+        "start_node": "n6"
+      },
+      {
+        "end_node": "n2",
+        "id": "m9",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m9",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n1",
+        "id": "m10",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m10",
+        "section_id": "sec_1in2",
+        "start_node": "n4"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "n1",
+        "support": "free",
+        "x": 18.288,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n2",
+        "support": "free",
+        "x": 18.288,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "n3",
+        "support": "free",
+        "x": 9.144,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n4",
+        "support": "free",
+        "x": 9.144,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "n5",
+        "support": "pin",
+        "x": 0.0,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n6",
+        "support": "pin",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ],
+    "provenance": "synthetic fixture",
+    "schema_version": "0.2.0",
+    "sections": [
+      {
+        "area": 0.0129032,
+        "id": "sec_1in2",
+        "iy": 1.3249057770885296e-05,
+        "iz": 1.3249057770885296e-05,
+        "j": 2.649811554177059e-05,
+        "name": "Solid circular bar",
+        "shape": "solid_round"
+      },
+      {
+        "area": 0.00516128,
+        "id": "section_m8_thin-compression",
+        "iy": 2.119849243341647e-06,
+        "iz": 2.119849243341647e-06,
+        "j": 4.239698486683294e-06,
+        "name": "Solid circular bar",
+        "shape": "solid_round"
+      }
+    ],
+    "source": {
+      "branch_name": null,
+      "document_id": "synthetic-ten-bar",
+      "element_id": "synthetic-assembly",
+      "version_id": null,
+      "workspace_id": "7121b248aa290fdccdc1afa6"
+    },
+    "units": {
+      "area": "m^2",
+      "force": "N",
+      "length": "m",
+      "stress": "Pa",
+      "system": "SI"
+    }
+  },
+  "after_solve": {
+    "axial_forces": {
+      "m1": 32749.127088706497,
+      "m10": -12275.069188694457,
+      "m2": 8679.784662859902,
+      "m3": -47250.87291129357,
+      "m4": -11320.215337140124,
+      "m5": 1428.9117515663822,
+      "m6": 8679.784662859893,
+      "m7": 38538.55405765693,
+      "m8": -18029.988437266908,
+      "m9": 16009.202058767485
+    },
+    "condition_number": 82.93527871118317,
+    "displacements": {
+      "n1": [
+        0.0004258023396665364,
+        -0.0024415971137383666,
+        0.0
+      ],
+      "n2": [
+        -0.0006019879682708607,
+        -0.002530807099253077,
+        0.0
+      ],
+      "n3": [
+        0.00033659235415182574,
+        -0.0012631447225541382,
+        0.0
+      ],
+      "n4": [
+        -0.00048563989219809194,
+        -0.001277830939045716,
+        0.0
+      ],
+      "n5": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n6": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "doubled_stresses": {
+      "m1": 5076124.850999209,
+      "m10": -1902639.5295266998,
+      "m2": 1345369.3134819118,
+      "m3": -7323899.949050401,
+      "m4": -1754636.8865304922,
+      "m5": 221481.76445631817,
+      "m6": 1345369.3134819104,
+      "m7": 5973487.8259124765,
+      "m8": -6986634.492709912,
+      "m9": 2481431.281971524
+    },
+    "graph_id": "graph-selfcheck-001",
+    "load_case_id": "lc_1",
+    "model_fingerprint": "d4b7519941eac047b3052381c74d9a7b892de6a60cf40c44f1ca70d4d4b63055",
+    "reactions": {
+      "n1": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n2": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n3": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n4": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n5": [
+        -60000.000000000044,
+        27250.87291129355,
+        0.0
+      ],
+      "n6": [
+        60000.000000000044,
+        12749.127088706473,
+        0.0
+      ]
+    },
+    "sanity_checks": {
+      "equilibrium_ok": true,
+      "linearity_ok": true,
+      "max_linearity_relative_error": 0.0,
+      "max_residual_force": 3.456079866737127e-11,
+      "note": "Free-joint force balance and independently recovered 2x-load stresses."
+    },
+    "solver_version": "2.4.1",
+    "stresses": {
+      "m1": 2538062.4254996045,
+      "m10": -951319.7647633499,
+      "m2": 672684.6567409559,
+      "m3": -3661949.9745252007,
+      "m4": -877318.4432652461,
+      "m5": 110740.88222815908,
+      "m6": 672684.6567409552,
+      "m7": 2986743.9129562383,
+      "m8": -3493317.246354956,
+      "m9": 1240715.640985762
+    }
+  },
+  "before_graph": {
+    "affected_member_ids": [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10"
+    ],
+    "affected_node_ids": [
+      "n1",
+      "n2",
+      "n3",
+      "n4",
+      "n5",
+      "n6"
+    ],
+    "change": {
+      "description": "Resize m8 from 20 to 8 in^2.",
+      "field_name": "area",
+      "id": "thin-compression",
+      "kind": "feature_edit",
+      "load_case_id": "lc_1",
+      "node_after": null,
+      "node_before": null,
+      "numeric_after": 0.00516128,
+      "numeric_before": 0.0129032,
+      "target_id": "m8",
+      "target_kind": "member",
+      "value_after": null,
+      "value_before": null
+    },
+    "design_target": 1.5,
+    "edges": [
+      {
+        "kind": "mate",
+        "source_id": "m1",
+        "target_id": "m2"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m2",
+        "target_id": "m1"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m2",
+        "target_id": "m3"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m3",
+        "target_id": "m2"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m3",
+        "target_id": "m4"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m4",
+        "target_id": "m3"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m4",
+        "target_id": "m5"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m5",
+        "target_id": "m4"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m5",
+        "target_id": "m6"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m6",
+        "target_id": "m5"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m6",
+        "target_id": "m7"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m7",
+        "target_id": "m6"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m7",
+        "target_id": "m8"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m8",
+        "target_id": "m7"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m8",
+        "target_id": "m9"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m9",
+        "target_id": "m8"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m9",
+        "target_id": "m10"
+      },
+      {
+        "kind": "mate",
+        "source_id": "m10",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m1",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m2",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m3",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m4",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m7"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m5",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m6",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m7",
+        "target_id": "m10"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m8",
+        "target_id": "m9"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m1"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m9",
+        "target_id": "m8"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m2"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m3"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m4"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m5"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m6"
+      },
+      {
+        "kind": "topology",
+        "source_id": "m10",
+        "target_id": "m7"
+      }
+    ],
+    "hard_floor": 1.0,
+    "id": "graph-selfcheck-001",
+    "load_cases": [
+      {
+        "id": "lc_1",
+        "include_self_weight": false,
+        "name": "Benchmark load case",
+        "point_loads": [
+          {
+            "fx": 0.0,
+            "fy": -20000.0,
+            "fz": 0.0,
+            "id": "p1",
+            "node_id": "n2"
+          },
+          {
+            "fx": 0.0,
+            "fy": -20000.0,
+            "fz": 0.0,
+            "id": "p2",
+            "node_id": "n4"
+          }
+        ]
+      }
+    ],
+    "mapping_warnings": [],
+    "materials": [
+      {
+        "density": 0.0,
+        "elastic_modulus": 68950000000.0,
+        "id": "mat_steel",
+        "name": "Illustrative benchmark material",
+        "yield_strength": 248000000.0
+      }
+    ],
+    "members": [
+      {
+        "end_node": "n3",
+        "id": "m1",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m1",
+        "section_id": "sec_1in2",
+        "start_node": "n5"
+      },
+      {
+        "end_node": "n1",
+        "id": "m2",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m2",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n4",
+        "id": "m3",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m3",
+        "section_id": "sec_1in2",
+        "start_node": "n6"
+      },
+      {
+        "end_node": "n2",
+        "id": "m4",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m4",
+        "section_id": "sec_1in2",
+        "start_node": "n4"
+      },
+      {
+        "end_node": "n4",
+        "id": "m5",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m5",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n2",
+        "id": "m6",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m6",
+        "section_id": "sec_1in2",
+        "start_node": "n1"
+      },
+      {
+        "end_node": "n4",
+        "id": "m7",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m7",
+        "section_id": "sec_1in2",
+        "start_node": "n5"
+      },
+      {
+        "end_node": "n3",
+        "id": "m8",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m8",
+        "section_id": "sec_1in2",
+        "start_node": "n6"
+      },
+      {
+        "end_node": "n2",
+        "id": "m9",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m9",
+        "section_id": "sec_1in2",
+        "start_node": "n3"
+      },
+      {
+        "end_node": "n1",
+        "id": "m10",
+        "material_id": "mat_steel",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m10",
+        "section_id": "sec_1in2",
+        "start_node": "n4"
+      }
+    ],
+    "nodes": [
+      {
+        "id": "n1",
+        "support": "free",
+        "x": 18.288,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n2",
+        "support": "free",
+        "x": 18.288,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "n3",
+        "support": "free",
+        "x": 9.144,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n4",
+        "support": "free",
+        "x": 9.144,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "id": "n5",
+        "support": "pin",
+        "x": 0.0,
+        "y": 9.144,
+        "z": 0.0
+      },
+      {
+        "id": "n6",
+        "support": "pin",
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ],
+    "provenance": "synthetic fixture",
+    "schema_version": "0.2.0",
+    "sections": [
+      {
+        "area": 0.0129032,
+        "id": "sec_1in2",
+        "iy": 1.3249057770885296e-05,
+        "iz": 1.3249057770885296e-05,
+        "j": 2.649811554177059e-05,
+        "name": "Solid circular bar",
+        "shape": "solid_round"
+      }
+    ],
+    "source": {
+      "branch_name": null,
+      "document_id": "synthetic-ten-bar",
+      "element_id": "synthetic-assembly",
+      "version_id": null,
+      "workspace_id": "7121b248aa290fdccdc1afa6"
+    },
+    "units": {
+      "area": "m^2",
+      "force": "N",
+      "length": "m",
+      "stress": "Pa",
+      "system": "SI"
+    }
+  },
+  "before_solve": {
+    "axial_forces": {
+      "m1": 39072.99739376234,
+      "m10": -11348.959824191164,
+      "m2": 8024.926451099265,
+      "m3": -40927.00260623773,
+      "m4": -11975.07354890079,
+      "m5": 7097.923844861553,
+      "m6": 8024.926451099236,
+      "m7": 29595.25090555847,
+      "m8": -26973.291589365384,
+      "m9": 16935.311423270792
+    },
+    "condition_number": 74.61181821538128,
+    "displacements": {
+      "n1": [
+        0.0004840678965172235,
+        -0.0021669966878332778,
+        0.0
+      ],
+      "n2": [
+        -0.000543722411420174,
+        -0.00224947610411678,
+        0.0
+      ],
+      "n3": [
+        0.0004015884802337208,
+        -0.0009560462336081013,
+        0.0
+      ],
+      "n4": [
+        -0.00042064376611619696,
+        -0.0010289980069503658,
+        0.0
+      ],
+      "n5": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n6": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "doubled_stresses": {
+      "m1": 6056326.708686581,
+      "m10": -1759092.2909342123,
+      "m2": 1243866.0876525615,
+      "m3": -6343698.0913630305,
+      "m4": -1856140.112359847,
+      "m5": 1100180.3963143334,
+      "m6": 1243866.0876525568,
+      "m7": 4587273.064907692,
+      "m8": -4180868.5580887506,
+      "m9": 2624978.520564014
+    },
+    "graph_id": "graph-selfcheck-001",
+    "load_case_id": "lc_1",
+    "model_fingerprint": "c831a3d7eafe35909accfc8cd5e94dd6bf0d65d2550e0d9e87d176511ecd7392",
+    "reactions": {
+      "n1": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n2": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n3": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n4": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n5": [
+        -60000.000000000044,
+        20927.002606237704,
+        0.0
+      ],
+      "n6": [
+        60000.00000000006,
+        19072.99739376233,
+        0.0
+      ]
+    },
+    "sanity_checks": {
+      "equilibrium_ok": true,
+      "linearity_ok": true,
+      "max_linearity_relative_error": 0.0,
+      "max_residual_force": 3.2741809263825417e-11,
+      "note": "Free-joint force balance and independently recovered 2x-load stresses."
+    },
+    "solver_version": "2.4.1",
+    "stresses": {
+      "m1": 3028163.3543432904,
+      "m10": -879546.1454671061,
+      "m2": 621933.0438262807,
+      "m3": -3171849.0456815152,
+      "m4": -928070.0561799235,
+      "m5": 550090.1981571667,
+      "m6": 621933.0438262784,
+      "m7": 2293636.532453846,
+      "m8": -2090434.2790443753,
+      "m9": 1312489.260282007
+    }
+  },
+  "capacities": {
+    "m1": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 3199993.6,
+      "member_id": "m1",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 97.71233264728801,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m10": {
+      "euler_capacity": 53915.865252735304,
+      "force_capacity": 53915.865252735304,
+      "member_id": "m10",
+      "mode": "euler_buckling",
+      "note": "",
+      "safety_factor": 4.39230642401533,
+      "slenderness": 403.55936758065087,
+      "stress_capacity": 4178487.9140628143,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m2": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 3199993.6,
+      "member_id": "m2",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 368.6720033150724,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m3": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 107831.73050547061,
+      "member_id": "m3",
+      "mode": "euler_buckling",
+      "note": "",
+      "safety_factor": 2.2821108661401563,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 8356975.828125629,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m4": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 107831.73050547061,
+      "member_id": "m4",
+      "mode": "euler_buckling",
+      "note": "",
+      "safety_factor": 9.525590043476383,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 8356975.828125629,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m5": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 3199993.6,
+      "member_id": "m5",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 2239.462021704382,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m6": {
+      "euler_capacity": 107831.73050547061,
+      "force_capacity": 3199993.6,
+      "member_id": "m6",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 368.67200331507274,
+      "slenderness": 285.3595654276328,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m7": {
+      "euler_capacity": 53915.865252735304,
+      "force_capacity": 3199993.6,
+      "member_id": "m7",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 83.03356672937286,
+      "slenderness": 403.55936758065087,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    },
+    "m8": {
+      "euler_capacity": 8626.538440437647,
+      "force_capacity": 8626.538440437647,
+      "member_id": "m8",
+      "mode": "euler_buckling",
+      "note": "",
+      "safety_factor": 0.47845501789713346,
+      "slenderness": 638.0833863259858,
+      "stress_capacity": 1671395.1656251254,
+      "yield_capacity": 1279997.44,
+      "zero_demand": false
+    },
+    "m9": {
+      "euler_capacity": 53915.865252735304,
+      "force_capacity": 3199993.6,
+      "member_id": "m9",
+      "mode": "yield",
+      "note": "",
+      "safety_factor": 199.88464061189825,
+      "slenderness": 403.55936758065087,
+      "stress_capacity": 248000000.0,
+      "yield_capacity": 3199993.6,
+      "zero_demand": false
+    }
+  },
+  "earl_decision": {
+    "change_description": "Resize m8 from 20 to 8 in^2.",
+    "change_id": "thin-compression",
+    "cross_check": {
+      "agrees": null,
+      "member_id": null,
+      "note": null,
+      "performed": false,
+      "provenance": "unspecified",
+      "pynite_value": null,
+      "relative_difference": null,
+      "skyciv_value": null,
+      "tolerance": 0.05
+    },
+    "design_target": 1.5,
+    "error_message": null,
+    "escalation_reason": "below_hard_floor",
+    "evaluated_at": null,
+    "expected_member_ids": [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "m6",
+      "m7",
+      "m8",
+      "m9",
+      "m10"
+    ],
+    "graph_id": "graph-selfcheck-001",
+    "hard_floor": 1.0,
+    "id": "eval-thin-compression",
+    "load_case_id": "lc_1",
+    "member_results": [
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 32749.127088706497,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m1",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m1",
+        "safety_factor": 97.71233264728801,
+        "safety_factor_before": 81.89782748816836,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": 2538062.4254996045,
+        "stress_before": 3028163.3543432904,
+        "utilization": 0.010234122683466148,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 8679.784662859902,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m2",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m2",
+        "safety_factor": 368.6720033150724,
+        "safety_factor_before": 398.7567511676896,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": 672684.6567409559,
+        "stress_before": 621933.0438262807,
+        "utilization": 0.0027124381320199832,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": -47250.87291129357,
+        "capacity": 8356975.828125629,
+        "capacity_before": 8356975.828125629,
+        "capacity_mode": "euler_buckling",
+        "is_affected": true,
+        "member_id": "m3",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m3",
+        "safety_factor": 2.2821108661401563,
+        "safety_factor_before": 2.6347331502120768,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": -3661949.9745252007,
+        "stress_before": -3171849.0456815152,
+        "utilization": 0.43819080608092803,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": -11320.215337140124,
+        "capacity": 8356975.828125629,
+        "capacity_before": 8356975.828125629,
+        "capacity_mode": "euler_buckling",
+        "is_affected": true,
+        "member_id": "m4",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m4",
+        "safety_factor": 9.525590043476383,
+        "safety_factor_before": 9.004682106137766,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": -877318.4432652461,
+        "stress_before": -928070.0561799235,
+        "utilization": 0.10498037343994787,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 1428.9117515663822,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m5",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m5",
+        "safety_factor": 2239.462021704382,
+        "safety_factor_before": 450.8351554541674,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": 110740.88222815908,
+        "stress_before": 550090.1981571667,
+        "utilization": 0.00044653581543612533,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 8679.784662859893,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m6",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m6",
+        "safety_factor": 368.67200331507274,
+        "safety_factor_before": 398.75675116769105,
+        "slenderness": 285.3595654276328,
+        "status": "pass",
+        "stress_after": 672684.6567409552,
+        "stress_before": 621933.0438262784,
+        "utilization": 0.0027124381320199806,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 38538.55405765693,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m7",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m7",
+        "safety_factor": 83.03356672937286,
+        "safety_factor_before": 108.12523976267386,
+        "slenderness": 403.55936758065087,
+        "status": "pass",
+        "stress_after": 2986743.9129562383,
+        "stress_before": 2293636.532453846,
+        "utilization": 0.01204332222966225,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.00516128,
+        "area_before": 0.0129032,
+        "axial_force_after": -18029.988437266908,
+        "capacity": 1671395.1656251254,
+        "capacity_before": 4178487.9140628143,
+        "capacity_mode": "euler_buckling",
+        "is_affected": true,
+        "member_id": "m8",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m8",
+        "safety_factor": 0.47845501789713346,
+        "safety_factor_before": 1.998861172508602,
+        "slenderness": 638.0833863259858,
+        "status": "fail",
+        "stress_after": -3493317.246354956,
+        "stress_before": -2090434.2790443753,
+        "utilization": 2.0900606380827993,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": 16009.202058767485,
+        "capacity": 248000000.0,
+        "capacity_before": 248000000.0,
+        "capacity_mode": "yield",
+        "is_affected": true,
+        "member_id": "m9",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m9",
+        "safety_factor": 199.88464061189825,
+        "safety_factor_before": 188.95392709477386,
+        "slenderness": 403.55936758065087,
+        "status": "pass",
+        "stress_after": 1240715.640985762,
+        "stress_before": 1312489.260282007,
+        "utilization": 0.005002885649136137,
+        "zero_demand": false
+      },
+      {
+        "area_after": 0.0129032,
+        "area_before": 0.0129032,
+        "axial_force_after": -12275.069188694457,
+        "capacity": 4178487.9140628143,
+        "capacity_before": 4178487.9140628143,
+        "capacity_mode": "euler_buckling",
+        "is_affected": true,
+        "member_id": "m10",
+        "note": "",
+        "onshape_id": "synthetic-ten-bar/synthetic-parts/part-m10",
+        "safety_factor": 4.39230642401533,
+        "safety_factor_before": 4.750731880979045,
+        "slenderness": 403.55936758065087,
+        "status": "pass",
+        "stress_after": -951319.7647633499,
+        "stress_before": -879546.1454671061,
+        "utilization": 0.22767081880544812,
+        "zero_demand": false
+      }
+    ],
+    "narrative": "",
+    "narrative_provenance": "deterministic template",
+    "outcome": "escalated",
+    "safety_factor_threshold": 1.5,
+    "sanity_checks": {
+      "equilibrium_ok": true,
+      "linearity_ok": true,
+      "max_linearity_relative_error": 0,
+      "max_residual_force": 3.456079866737127e-11,
+      "note": "Both before and after models checked; maxima cover both solves."
+    },
+    "schema_version": "0.2.0",
+    "skyciv_report": null,
+    "solver": "PyNite",
+    "solver_version": "2.4.1",
+    "source_provenance": "synthetic fixture",
+    "units": {
+      "area": "m^2",
+      "force": "N",
+      "length": "m",
+      "stress": "Pa",
+      "system": "SI"
+    },
+    "violating_member_ids": [
+      "m8"
+    ]
+  },
+  "ground_truth_failing_ids": [
+    "m8"
+  ],
+  "scenario": {
+    "area_in2": 8,
+    "id": "thin-compression",
+    "kind": "area",
+    "member": "m8",
+    "name": "Thin m8: 8 in^2"
+  }
+}

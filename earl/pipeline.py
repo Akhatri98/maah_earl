@@ -16,6 +16,7 @@ import uuid
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import Path
 from typing import Generator
 
@@ -41,6 +42,17 @@ class StageEvent(Serializable):
     duration_ms: float
     line: str
     data: dict = field(default_factory=dict)
+
+    def validate(self) -> None:
+        if self.stage not in STAGES or self.status not in {"passed", "failed", "skipped"}:
+            raise ValueError("unknown pipeline stage/status")
+        if not isfinite(self.duration_ms) or self.duration_ms < 0:
+            raise ValueError("invalid stage duration")
+        if self.data.get("decision") is not None:
+            Decision.from_dict(self.data["decision"]).validate()
+        for name in ("before_graph", "after_graph"):
+            if self.data.get(name) is not None:
+                DependencyGraph.from_dict(self.data[name]).validate()
 
 
 @dataclass

@@ -1,0 +1,12 @@
+.git
+.venv
+.tools
+.agents
+.codex
+.env
+.env.*
+out
+node_modules
+**/__pycache__
+**/*.pyc
+Plan

@@ -31,8 +31,9 @@ or deployment branch; `main` and the default branch are not changed.
    Label these runs **rule-based baseline**, never measured LLM behavior.
 4. A statically indeterminate truss cannot be physically solved one bar at a
    time. The tool must assemble/solve the full equilibrium system even for a
-   subset request; only selected member stress recovery, capacity checks, and
-   reports are exposed to the baseline. Selection never deletes unselected
+   subset request; only selected member stresses, capacity checks, and
+   reports are exposed to the baseline. Global sanity checks recover all
+   stresses internally in the worker. Selection never deletes unselected
    bars from the structural model. Both systems use the same solver/capacity
    implementation. This comparison measures omissions in verification scope,
    not speed or superior numerical accuracy.
@@ -49,6 +50,11 @@ or deployment branch; `main` and the default branch are not changed.
    truth, outcomes, and counts for every run. The served scoreboard uses the
    committed cache; regeneration requires no network. This is one fixed
    benchmark family, not a claim of general LLM reliability.
+
+Unselected members are `NOT_EVALUATED`; the baseline is held for incomplete
+verification, not silently approved. Dropped dominoes measure missing specific
+member findings, **not unsafe merges or released designs**. Incomplete-scope
+escalation does not count as reporting every unnamed failing member.
 
 The ten-bar benchmark is statically indeterminate to degree two (10 bars + 4
 restrained translations - 2*6 joints = 2). An edit can redistribute forces
@@ -162,14 +168,56 @@ Zero demand uses a null/unbounded safety factor with an explicit flag, never
 nonstandard JSON Infinity. Missing inertia is `NOT_EVALUATED`; tiny inertia
 used solely for PyNite end-release algebra never becomes a capacity.
 
+## Evaluation Results
+
+The catalogue was frozen in commit `51dd329` after this protocol was committed
+and before the first evaluation. Five area edits, five member removals, five
+added loads, and five moved loads comprise the twenty cases. Every initial
+member passes. The changed models contain 18 failing-member findings in total.
+
+| System | Reported Findings | Dropped Dominoes | Cases With Drops | Analysis Errors |
+|---|---:|---:|---:|---:|
+| EARL | 18 | 0 | 0 | 0 |
+| Rule-based selection baseline | 8 | 10 | 7 | 0 |
+
+The baseline is explicitly the deterministic local policy above, not a live
+LLM run. Selecting all members is permitted and a test verifies that this
+eliminates its omissions. An incomplete baseline report is escalated, even in
+cases with no failing members; these numbers do not count unsafe approvals.
+Ground truth and EARL share the validated solver/capacity implementation, so
+agreement is expected when EARL checks every member. The useful contrast is
+complete numerical verification versus a fallible selection heuristic, not a
+new structural-analysis algorithm or graph traversal result.
+
+`python -m earl eval` regenerates all 42 committed JSON files under
+`earl/eval/cache/`: one benchmark, one scoreboard, twenty ground-truth runs,
+and twenty baseline runs. Each case contains its input, typed change, selected
+IDs, explicit findings, and validated decisions. The scoreboard endpoint only
+reads this cache and checks the catalogue hash; it never invokes a model.
+
 ## Verification Status
 
-The end-to-end pipeline checkpoint passes 96 offline tests, including the
+The end-to-end pipeline checkpoint passes 105 offline tests, including the
 original 50. With networking disabled, `thin-compression` resizes m8 from
 20 to 8 in^2, produces SF `0.478`, escalates, and writes an ECN, MIME email,
 Decision JSON, report reference, and nine-stage JSONL trace. `reinforce-chord`
 approves. A mocked solver crash produces a held `ERROR` with a saved email.
-Eval counts and deployment verification will be filled in after measurement.
+
+Tests cover hard-floor rejection on produce and consume, solver benchmark,
+both sanity checks, buckling, stale model fingerprints, unmapped instances,
+typed edit application, incomplete and disputed escalation, capability denial,
+network fallbacks, public-input clamps, and tampered SSE/trace rejection.
+Headless Chromium application checks exercise all six panels, comparison,
+hover, sorting, removal, parser preview, artifacts, and five viewports:
+1440x900, 1366x768, 820x1180, 390x844, and 320x700. They found no page overflow,
+overlapping controls, JavaScript exceptions, or third-party requests. The member
+table intentionally scrolls horizontally on narrow phones.
+
+`scripts/browser_selfcheck.py` writes screenshots and measurements under
+`out/qa/`. It uses an isolated browser profile, not a user's session. Native
+Safari also rendered the public escalated ECN. SVG colors change only when a
+gate event arrives; preserving the member elements makes their transition
+real, and reduced-motion users get an immediate color update.
 
 ## External-Service Reality
 
@@ -200,5 +248,48 @@ enforces the EARL acceptance state, not a real Onshape branch permission.
 
 Semantic outputs (model, forces, comparisons) are deterministic. Run IDs,
 audit timestamps, and measured durations intentionally vary between runs.
+
+## Public Deployment
+
+Verified URL: [EARL on astra](https://unbridle-dining-crystal.ngrok-free.dev).
+The initial public verification on 2026-09-13 received all nine SSE stages,
+an `ESCALATED` decision with m8 SF `0.47845501789713346`, and HTTP 200 for the
+ECN, email, report reference, trace, and decision endpoints. Ingest arrived at
+53.5 ms and solve at 865.8 ms; these observed arrival times show the proxy did
+not buffer the run into a single final response. They are not latency promises.
+`scripts/deployment_selfcheck.py` reproduces these checks against the URL.
+
+The Dockerfile and Render blueprint are checked in, with `branch: astra`
+explicitly set. No authenticated Render or Fly.io deployment credentials were
+available. The Docker CLI was present but its engine was not running, so a
+local image build was not verified. The current URL is **not a Render/Fly
+deployment** and has no persistent-volume or uptime guarantee.
+
+The brief's cloudflared fallback was changed to the already configured ngrok
+agent because [Cloudflare Quick Tunnels explicitly do not support SSE](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/).
+No named Cloudflare tunnel configuration was available. A working incremental
+SSE stream takes priority over choosing a proxy that buffers this demo.
+[Ngrok's free tier](https://ngrok.com/docs/pricing-limits/free-plan-limits) adds
+a first-visit HTML notice with **Visit Site**; it is visible to real visitors,
+not hidden by the application. Automated public app tests use the documented
+`ngrok-skip-browser-warning` header and record that fact. Local tests require
+no such header. Free-tier traffic quotas still apply.
+
+For the existing dev machine, `python scripts/start_demo.py` launches the
+committed `astra` source and existing ngrok configuration, refusing occupied
+ports or dirty tracked source. It records process IDs and logs under
+`out/services/`, puts the launched commit in `/healthz`, and verifies the
+public endpoint reports that commit. The dev machine must remain awake and
+both processes must remain running. Credentials are never printed or committed.
+
+Public mode is always offline, even if an operator sets `DEMO_MODE=false`.
+Judge areas are clamped to 0.5-40 in^2 and loads to 0-150 kN. Member IDs and
+free load nodes are allowlisted; unsupported parameters are rejected. Two
+simultaneous runs are allowed, with a 12-second killable timeout per solve.
+No public request can choose arbitrary geometry, files, URLs, or API tools.
+Every completed stage is appended to the local JSONL trace. If a browser
+disconnects mid-run, its stream may end before delivery; the UI reports ERROR
+and does not claim a completed acceptance record. There is no background run
+manager or durable queue, as required for this hackathon scope.
 
 Reference for the overlap: [Onshape Simulation](https://www.onshape.com/en/features/simulation).

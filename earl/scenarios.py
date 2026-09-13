@@ -34,11 +34,13 @@ def clamp(value: object, bounds: tuple[float, float], name: str) -> float:
 def make_change(graph: DependencyGraph, scenario: str = "thin-compression", *,
                 param: dict | None = None) -> ChangeEvent:
     graph.validate()
-    param = param or {}
+    param = {} if param is None else param
     if not isinstance(param, dict) or len(param) > 8:
         raise ValueError("param must be a small object")
     if scenario in ("custom-area", "custom-remove", "custom-load"):
-        allowed = {"member", "area_in2", "load_kn", "node"}
+        allowed = {"custom-area": {"member", "area_in2"},
+                   "custom-remove": {"member"},
+                   "custom-load": {"load_kn", "node"}}[scenario]
         if set(param) - allowed:
             raise ValueError("unknown judge parameter")
         spec = {"id": scenario, "kind": scenario.removeprefix("custom-")}
@@ -50,6 +52,8 @@ def make_change(graph: DependencyGraph, scenario: str = "thin-compression", *,
         if param:
             if set(param) - {"value"}:
                 raise ValueError("preset override only accepts value")
+            if spec["kind"] not in ("area", "add_load"):
+                raise ValueError("this preset has no numeric override")
             spec["area_in2" if spec["kind"] == "area" else "load_kn"] = param["value"]
     kind = spec["kind"]
     if kind in ("area", "remove"):
