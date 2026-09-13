@@ -1,16 +1,1501 @@
 {
   "rootAssembly": {
+    "occurrences": [
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "M/Po8vgUfrP9bViR4"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": true,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "M5SODCTacczpSVpUi"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MC/7wwB6miOuNb8Bb"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MGfjGKryL0sc5uCDp"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MH3UudNKOHt/o8buq"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MOcz2YDoouBW2xThl"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "Mjiyvtc/VIpZLWinm"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "Mn+MY6wkbnzUzxUjj"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MsygS8gPtdHQmeAXm"
+        ]
+      },
+      {
+        "transform": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "fixed": false,
+        "mateStatuses": null,
+        "hidden": false,
+        "path": [
+          "MzKU2o9bQUh2xzlVb"
+        ]
+      }
+    ],
     "patterns": [],
     "parametricInstances": [],
-    "features": [],
-    "instances": [],
+    "features": [
+      {
+        "id": "M/p4QZrnj8ogrJ+gm",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  0.0,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M5SODCTacczpSVpUi"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  0.0,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  0.0,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MC/7wwB6miOuNb8Bb"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  0.0,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 1"
+        }
+      },
+      {
+        "id": "MqYUd/UYIQz2gEr4Y",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M5SODCTacczpSVpUi"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MGfjGKryL0sc5uCDp"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 2"
+        }
+      },
+      {
+        "id": "MUNmrJY2F67guXL+P",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M5SODCTacczpSVpUi"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "Mjiyvtc/VIpZLWinm"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 3"
+        }
+      },
+      {
+        "id": "McjsAWOPiqJ2QHR3r",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M5SODCTacczpSVpUi"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MzKU2o9bQUh2xzlVb"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 4"
+        }
+      },
+      {
+        "id": "MaKds/rrcY9BtWQE6",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M5SODCTacczpSVpUi"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "Mn+MY6wkbnzUzxUjj"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 5"
+        }
+      },
+      {
+        "id": "MhMKT7yVRBiyk5tF8",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MC/7wwB6miOuNb8Bb"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "M/Po8vgUfrP9bViR4"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 6"
+        }
+      },
+      {
+        "id": "M7UHvmnsI38juRBQ9",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MC/7wwB6miOuNb8Bb"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MH3UudNKOHt/o8buq"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 7"
+        }
+      },
+      {
+        "id": "MfJrBrj79Uhj96br9",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MC/7wwB6miOuNb8Bb"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MsygS8gPtdHQmeAXm"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  9.144,
+                  0.0,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 8"
+        }
+      },
+      {
+        "id": "MSeHKSMJ+F10PDXCX",
+        "featureType": "mate",
+        "suppressed": false,
+        "featureData": {
+          "mateType": "FASTENED",
+          "matedEntities": [
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  18.288,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MGfjGKryL0sc5uCDp"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  18.288,
+                  9.144,
+                  0.0
+                ]
+              }
+            },
+            {
+              "mateConnectorCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  18.288,
+                  9.144,
+                  0.0
+                ]
+              },
+              "matedOccurrence": [
+                "MOcz2YDoouBW2xThl"
+              ],
+              "matedCS": {
+                "xAxis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "yAxis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "zAxis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "origin": [
+                  18.288,
+                  9.144,
+                  0.0
+                ]
+              }
+            }
+          ],
+          "mateLimits": {},
+          "name": "Fastened 9"
+        }
+      }
+    ],
+    "instances": [
+      {
+        "isStandardContent": false,
+        "id": "M5SODCTacczpSVpUi",
+        "type": "Part",
+        "name": "m1 <1>",
+        "suppressed": false,
+        "partId": "JHD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MGfjGKryL0sc5uCDp",
+        "type": "Part",
+        "name": "m2 <1>",
+        "suppressed": false,
+        "partId": "JND",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "M/Po8vgUfrP9bViR4",
+        "type": "Part",
+        "name": "m3 <1>",
+        "suppressed": false,
+        "partId": "JTD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MH3UudNKOHt/o8buq",
+        "type": "Part",
+        "name": "m4 <1>",
+        "suppressed": false,
+        "partId": "JZD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "Mjiyvtc/VIpZLWinm",
+        "type": "Part",
+        "name": "m5 <1>",
+        "suppressed": false,
+        "partId": "JfD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MOcz2YDoouBW2xThl",
+        "type": "Part",
+        "name": "m6 <1>",
+        "suppressed": false,
+        "partId": "JlD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MC/7wwB6miOuNb8Bb",
+        "type": "Part",
+        "name": "m7 <1>",
+        "suppressed": false,
+        "partId": "JrD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MzKU2o9bQUh2xzlVb",
+        "type": "Part",
+        "name": "m8 <1>",
+        "suppressed": false,
+        "partId": "JxD",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "Mn+MY6wkbnzUzxUjj",
+        "type": "Part",
+        "name": "m9 <1>",
+        "suppressed": false,
+        "partId": "J3D",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      },
+      {
+        "isStandardContent": false,
+        "id": "MsygS8gPtdHQmeAXm",
+        "type": "Part",
+        "name": "m10 <1>",
+        "suppressed": false,
+        "partId": "J9D",
+        "fullConfiguration": "default",
+        "configuration": "default",
+        "documentId": "74352477fea92ae1dadf61d6",
+        "elementId": "1a595ebc191cbaa887523bc7",
+        "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+      }
+    ],
     "fullConfiguration": "default",
     "configuration": "default",
     "documentId": "74352477fea92ae1dadf61d6",
     "elementId": "72f445c1fb5399de58418375",
-    "documentMicroversion": "8a1ed7bb0bca81a36d9a72c8"
+    "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
   },
   "subAssemblies": [],
-  "parts": [],
+  "parts": [
+    {
+      "isStandardContent": false,
+      "partId": "JND",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JlD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "J9D",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JZD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JHD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JxD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JfD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "J3D",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JTD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    },
+    {
+      "isStandardContent": false,
+      "partId": "JrD",
+      "bodyType": "solid",
+      "fullConfiguration": "default",
+      "configuration": "default",
+      "documentId": "74352477fea92ae1dadf61d6",
+      "elementId": "1a595ebc191cbaa887523bc7",
+      "documentMicroversion": "7614b92c8fa1bc7312fc8a1f"
+    }
+  ],
   "partStudioFeatures": []
 }

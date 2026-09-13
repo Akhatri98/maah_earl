@@ -14,6 +14,7 @@ shape Onshape documents and guarantees:
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Iterable
@@ -25,15 +26,69 @@ from ..contracts.graph import Edge, EdgeKind
 # Variable table
 # --------------------------------------------------------------------------
 
+# SI factors for the length units Onshape expressions are authored in.
+_LENGTH_UNITS = {
+    "m": 1.0, "meter": 1.0, "metre": 1.0,
+    "cm": 0.01, "mm": 0.001,
+    "in": 0.0254, "inch": 0.0254, "\"": 0.0254,
+    "ft": 0.3048, "foot": 0.3048, "feet": 0.3048,
+    "yd": 0.9144,
+}
+
+_EXPRESSION = re.compile(
+    r"""^\s*
+        (?P<number>[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?)   # 360, 1.5, 1e3
+        \s*\*?\s*
+        (?P<unit>[A-Za-z"]+)?                         # in, mm, ft (optional)
+        \s*(?:\^\s*(?P<power>\d+))?                   # ^2 for areas
+        \s*$""",
+    re.VERBOSE,
+)
+
+
+def evaluate_expression(expression: str) -> float | None:
+    """Convert an Onshape variable expression to an SI float.
+
+    Onshape's /variables endpoint returns `value: null` -- it hands back only
+    the authored text ("360 in"), never an evaluated number. So the conversion
+    has to happen here.
+
+    Returns None for anything this cannot evaluate exactly -- an expression
+    referencing another variable ("#bayWidth * 2"), arithmetic, or an unknown
+    unit. None means "unknown", never a guessed number: a silently wrong
+    conversion is worse than no value, because everything downstream would
+    treat it as real.
+    """
+    if not expression:
+        return None
+
+    match = _EXPRESSION.match(expression.strip())
+    if not match:
+        return None
+
+    number = float(match.group("number"))
+    unit = (match.group("unit") or "").lower()
+    power = int(match.group("power") or 1)
+
+    if not unit:
+        return number if power == 1 else None   # unitless; a power is nonsense
+
+    factor = _LENGTH_UNITS.get(unit)
+    if factor is None:
+        return None
+
+    return number * (factor ** power)
+
+
 @dataclass(frozen=True)
 class Variable:
     """One row of an Onshape variable table.
 
-    `expression` is the authored text ("360 in"); `value` is Onshape's
-    evaluated number, which is always in METRES for a LENGTH variable
-    regardless of how the expression was written. Both are kept: the
-    expression is what a human recognises in an ECN, the value is what the
-    solver needs.
+    `expression` is the authored text ("360 in") -- that is what a human
+    recognises in an ECN, and what change detection diffs. `value` is whatever
+    Onshape reported, which in practice is always None.
+
+    Use `si_value` for a number to compute with.
     """
 
     name: str
@@ -41,6 +96,14 @@ class Variable:
     expression: str
     value: float | None = None
     description: str = ""
+
+    @property
+    def si_value(self) -> float | None:
+        """The value in SI units, evaluated from the expression when Onshape
+        does not supply one. None when it cannot be evaluated exactly."""
+        if self.value is not None:
+            return self.value
+        return evaluate_expression(self.expression)
 
 
 def parse_variables(payload: Any) -> list[Variable]:
@@ -113,6 +176,14 @@ class Mate:
     mate_type: str                 # FASTENED | REVOLUTE | SLIDER | ...
     occurrences: tuple[str, ...] = ()
     suppressed: bool = False
+    # Mate connector origins in assembly coordinates, one per mated entity.
+    # These are the truss NODE positions, which is what makes it possible to
+    # tell which members meet where without re-deriving it from part geometry.
+    origins: tuple[tuple[float, float, float], ...] = ()
+    # Connector identifiers, where the source format carries them. Our
+    # FeatureScript ids survive here as "<featureid>.m1_n5", so a mate can be
+    # traced back to the exact node it was made at.
+    connector_ids: tuple[str, ...] = ()
 
 
 def parse_instances(assembly: dict[str, Any]) -> list[Instance]:
@@ -133,11 +204,22 @@ def parse_instances(assembly: dict[str, Any]) -> list[Instance]:
 
 
 def parse_mates(assembly_or_features: dict[str, Any]) -> list[Mate]:
-    """Parse mate features.
+    """Parse mate features from either Onshape response that carries them.
 
-    Accepts either the assembly definition (which carries rootAssembly.features
-    when requested with includeMateFeatures) or the dedicated /features
-    response, since the two nest the same feature objects differently.
+    The two endpoints return genuinely different formats:
+
+      * **assembly definition** (`GET /assemblies/.../e/{eid}` with
+        includeMateFeatures) -- the resolved form, with `featureData`,
+        `matedEntities` and the mate connector coordinate systems. Prefer this:
+        it is the only one that carries node POSITIONS.
+      * **`/features`** -- the authoring form, Onshape's BTM parameter tree,
+        where the mate type and the mated occurrences are buried in a
+        `parameters` list rather than named fields.
+
+    Both are handled because reading the authoring form with the resolved
+    parser silently yields mates with no occurrences -- correct-looking objects
+    that produce zero edges. A quietly empty dependency graph is the precise
+    failure this project exists to catch, so it must not be possible here.
     """
     payload = assembly_or_features or {}
     features = (payload.get("rootAssembly") or {}).get("features")
@@ -146,29 +228,89 @@ def parse_mates(assembly_or_features: dict[str, Any]) -> list[Mate]:
 
     mates: list[Mate] = []
     for f in features:
-        # /features wraps each feature in a {type, message} envelope;
-        # the assembly definition does not.
         body = f.get("message", f)
-        data = body.get("featureData") or {}
-        occurrences: list[str] = []
-        for entity in data.get("matedEntities") or []:
-            occ = entity.get("matedOccurrence") or []
-            if occ:
-                # An occurrence path is a list of instance ids; the LAST entry
-                # is the instance actually being mated, earlier entries are the
-                # subassemblies containing it.
-                occurrences.append(occ[-1])
 
-        mates.append(
-            Mate(
-                id=body.get("featureId") or body.get("id") or "",
-                name=data.get("name") or body.get("name") or "",
-                mate_type=(data.get("mateType") or "").upper(),
-                occurrences=tuple(occurrences),
-                suppressed=bool(body.get("suppressed", False)),
-            )
-        )
+        if "featureData" in body:
+            mates.append(_parse_resolved_mate(body))
+        elif body.get("parameters") is not None:
+            mates.append(_parse_btm_mate(body))
     return mates
+
+
+def _parse_resolved_mate(body: dict[str, Any]) -> Mate:
+    """Assembly-definition form: named fields, plus connector coordinates."""
+    data = body.get("featureData") or {}
+    occurrences: list[str] = []
+    origins: list[tuple[float, float, float]] = []
+
+    for entity in data.get("matedEntities") or []:
+        occ = entity.get("matedOccurrence") or []
+        if occ:
+            # An occurrence path is a list of instance ids; the LAST entry is
+            # the instance actually being mated, earlier entries are the
+            # subassemblies containing it.
+            occurrences.append(occ[-1])
+
+        cs = entity.get("mateConnectorCS") or entity.get("matedCS") or {}
+        origin = cs.get("origin")
+        if origin and len(origin) == 3:
+            origins.append(tuple(float(v) for v in origin))
+
+    # Group mates hold a flat occurrence list instead of matedEntities.
+    is_group = False
+    for entry in data.get("occurrences") or []:
+        is_group = True
+        occ = entry.get("occurrence") or []
+        if occ:
+            occurrences.append(occ[-1])
+
+    mate_type = (data.get("mateType") or "").upper()
+    if not mate_type and is_group:
+        mate_type = "GROUP"
+
+    return Mate(
+        id=body.get("featureId") or body.get("id") or "",
+        name=data.get("name") or body.get("name") or "",
+        mate_type=mate_type,
+        occurrences=tuple(occurrences),
+        suppressed=bool(body.get("suppressed", False)),
+        origins=tuple(origins),
+    )
+
+
+def _parse_btm_mate(body: dict[str, Any]) -> Mate:
+    """`/features` form: values live in a BTM `parameters` list, keyed by
+    `parameterId`, not as named fields."""
+    params = {}
+    for p in body.get("parameters") or []:
+        pm = p.get("message") or {}
+        if pm.get("parameterId"):
+            params[pm["parameterId"]] = pm
+
+    mate_type = str((params.get("mateType") or {}).get("value") or "").upper()
+
+    occurrences: list[str] = []
+    connector_ids: list[str] = []
+    query_param = params.get("mateConnectorsQuery") or params.get("occurrencesQuery")
+    for q in (query_param or {}).get("queries") or []:
+        qm = q.get("message") or {}
+        path = qm.get("path") or []
+        if path:
+            occurrences.append(path[-1])
+        if qm.get("featureId"):
+            connector_ids.append(qm["featureId"])
+
+    if not mate_type and body.get("featureType") == "mateGroup":
+        mate_type = "GROUP"
+
+    return Mate(
+        id=body.get("featureId") or body.get("nodeId") or "",
+        name=body.get("name") or "",
+        mate_type=mate_type,
+        occurrences=tuple(occurrences),
+        suppressed=bool(body.get("suppressed", False)),
+        connector_ids=tuple(connector_ids),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -182,6 +324,12 @@ def mate_edges(mates: Iterable[Mate], *, include_suppressed: bool = False) -> li
     affects the other -- so each mate yields edges in BOTH directions. Emitting
     only one direction would make the downstream traversal miss real
     dependencies, which is precisely a dropped domino.
+
+    Caution on GROUP mates: a group couples every member of the group to every
+    other, so one group over the whole assembly produces a fully-connected
+    graph in which everything depends on everything. That is not wrong exactly,
+    but it is useless -- the traversal can no longer distinguish what a change
+    actually reaches. Model real per-node mates instead.
     """
     edges: list[Edge] = []
     seen: set[tuple[str, str]] = set()

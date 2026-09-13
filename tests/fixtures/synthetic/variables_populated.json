@@ -18,7 +18,7 @@
         "description": "Truss bay height"
       },
       {
-        "type": "AREA",
+        "type": "ANY",
         "name": "barArea",
         "expression": "1 in^2",
         "value": 0.00064516,

@@ -1,5 +1,26 @@
 {
-  "features": [],
+  "features": [
+    {
+      "type": 134,
+      "typeName": "BTMFeature",
+      "message": {
+        "featureType": "tenBarTruss",
+        "featureId": "Fy6h0YTd3hERFAy_0",
+        "name": "10-bar truss 1",
+        "parameters": [],
+        "suppressed": false,
+        "namespace": "e6266b2129cb4b92cfcb080b9::m1b7628d45cb71fb2ff4bf9a4",
+        "subFeatures": [],
+        "returnAfterSubfeatures": false,
+        "suppressionState": {
+          "type": 0
+        },
+        "parameterLibraries": [],
+        "hasUserCode": false,
+        "nodeId": "MHj0mqy15ZEhujNiS"
+      }
+    }
+  ],
   "imports": [
     {
       "type": 136,
@@ -57,10 +78,21 @@
           "inactive": false
         }
       }
+    },
+    {
+      "key": "Fy6h0YTd3hERFAy_0",
+      "value": {
+        "type": 1688,
+        "typeName": "BTFeatureState",
+        "message": {
+          "featureStatus": "OK",
+          "inactive": false
+        }
+      }
     }
   ],
   "isComplete": true,
-  "rollbackIndex": 0,
+  "rollbackIndex": 1,
   "defaultFeatures": [
     {
       "type": 134,
@@ -144,7 +176,7 @@
     }
   ],
   "serializationVersion": "1.2.21",
-  "sourceMicroversion": "8a1ed7bb0bca81a36d9a72c8",
+  "sourceMicroversion": "7614b92c8fa1bc7312fc8a1f",
   "rejectMicroversionSkew": false,
   "microversionSkew": false,
   "libraryVersion": 3070
